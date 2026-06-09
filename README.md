@@ -129,6 +129,7 @@ All request bodies are validated; errors return a JSON `ErrorResponse`
 | Method | Path | Role | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/auth/login` | public | Exchange credentials for a JWT |
+| `POST` | `/api/admin/users` | ADMIN | Provision a user of any role (the only way to create AGENTs); CUSTOMER requires `agentId` |
 | `GET`  | `/api/users/me` | any | Get own profile |
 | `PUT`  | `/api/users/me` | any | Update own profile (fullName / email / password) |
 | `POST` | `/api/customers` | AGENT, ADMIN | Create a customer (under the calling agent; ADMIN supplies `agentId`) |
@@ -146,9 +147,15 @@ TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"admin"}' | jq -r .accessToken)
 
-# 2. (As admin) create an agent — admins can register users for any agent.
-#    In practice you would add an agent-creation endpoint; for the demo, agents can be
-#    seeded/managed by an admin. Once you have an AGENT token:
+# 2. As admin, provision an AGENT, then log in as that agent to get an AGENT token.
+curl -X POST http://localhost:8080/api/admin/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"amy","password":"agent123","fullName":"Amy Agent","email":"amy@example.com","role":"AGENT"}'
+
+AGENT_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"amy","password":"agent123"}' | jq -r .accessToken)
 
 # 3. As an AGENT, create a customer (registered under that agent)
 curl -X POST http://localhost:8080/api/customers \
@@ -170,12 +177,13 @@ curl -H "Authorization: Bearer $AGENT_TOKEN" http://localhost:8080/api/tickets
 
 ## Testing
 
-- `CustomerServiceTest`, `TicketServiceTest` — Mockito unit tests of the authorization/ownership
-  logic (customer registered under calling agent, duplicate username → 409, agents only see their
-  own customers/tickets, non-customers cannot open tickets).
-- `SecurityWebTest` — **security-aware** `@WebMvcTest` slice asserting `401` without a token, `403`
-  for a CUSTOMER hitting the AGENT-only customer-creation endpoint, and authorized access for an
-  AGENT.
+- `CustomerServiceTest`, `TicketServiceTest`, `AdminUserServiceTest` — Mockito unit tests of the
+  authorization/ownership logic (customer registered under calling agent, duplicate username → 409,
+  agents only see their own customers/tickets, non-customers cannot open tickets, CUSTOMER requires
+  an owning agent).
+- `SecurityWebTest`, `AdminUserSecurityTest` — **security-aware** `@WebMvcTest` slices asserting
+  `401` without a token, `403` for the wrong role (CUSTOMER on the AGENT-only customer endpoint;
+  CUSTOMER/AGENT on the ADMIN-only user endpoint), and authorized access for the correct role.
 
 ---
 

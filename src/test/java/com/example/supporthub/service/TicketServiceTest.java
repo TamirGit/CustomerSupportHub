@@ -78,12 +78,12 @@ class TicketServiceTest {
         User customer = userWithId(5L, "cust", Role.CUSTOMER, agent);
         Ticket ticket = new Ticket("s", "d", customer);
         when(userRepository.findByUsername("agent")).thenReturn(Optional.of(agent));
-        when(ticketRepository.findByOwner_AgentId(10L)).thenReturn(List.of(ticket));
+        when(ticketRepository.findByOwner_Agent_Id(10L)).thenReturn(List.of(ticket));
 
         List<TicketResponse> result = ticketService.listTickets("agent", null);
 
         assertThat(result).hasSize(1);
-        verify(ticketRepository).findByOwner_AgentId(10L);
+        verify(ticketRepository).findByOwner_Agent_Id(10L);
         verify(ticketRepository, never()).findAll(); // agent must not see all tickets
     }
 }

@@ -11,8 +11,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     /** Tickets owned by a single customer. */
     List<Ticket> findByOwnerId(Long ownerId);
 
-    /** Tickets created by any customer registered under the given agent. */
-    List<Ticket> findByOwner_AgentId(Long agentId);
+    /** Tickets created by any customer registered under the given agent (owner -> agent -> id). */
+    List<Ticket> findByOwner_Agent_Id(Long agentId);
 
-    List<Ticket> findByOwner_AgentIdAndStatus(Long agentId, TicketStatus status);
+    List<Ticket> findByOwner_Agent_IdAndStatus(Long agentId, TicketStatus status);
 }

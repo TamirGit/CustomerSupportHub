@@ -46,8 +46,8 @@ public class TicketService {
         List<Ticket> tickets = switch (user.getRole()) {
             case CUSTOMER -> ticketRepository.findByOwnerId(user.getId());
             case AGENT -> statusFilter == null
-                    ? ticketRepository.findByOwner_AgentId(user.getId())
-                    : ticketRepository.findByOwner_AgentIdAndStatus(user.getId(), statusFilter);
+                    ? ticketRepository.findByOwner_Agent_Id(user.getId())
+                    : ticketRepository.findByOwner_Agent_IdAndStatus(user.getId(), statusFilter);
             case ADMIN -> statusFilter == null
                     ? ticketRepository.findAll()
                     : ticketRepository.findAll().stream().filter(t -> t.getStatus() == statusFilter).toList();

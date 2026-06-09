@@ -81,7 +81,7 @@ class CustomerServiceTest {
         User c1 = new User("c1", "h", "C1", "c1@x.io", Role.CUSTOMER, agent);
         User c2 = new User("c2", "h", "C2", "c2@x.io", Role.CUSTOMER, agent);
         when(userRepository.findByUsername("agent1")).thenReturn(Optional.of(agent));
-        when(userRepository.findByAgentIdAndRole(10L, Role.CUSTOMER)).thenReturn(List.of(c1, c2));
+        when(userRepository.findByAgent_IdAndRole(10L, Role.CUSTOMER)).thenReturn(List.of(c1, c2));
 
         List<UserResponse> result = customerService.listCustomers("agent1");
 

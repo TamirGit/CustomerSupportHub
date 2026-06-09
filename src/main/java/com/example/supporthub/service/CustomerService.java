@@ -57,7 +57,7 @@ public class CustomerService {
         User user = loadUser(username);
         List<User> customers = user.getRole() == Role.ADMIN
                 ? userRepository.findAll().stream().filter(u -> u.getRole() == Role.CUSTOMER).toList()
-                : userRepository.findByAgentIdAndRole(user.getId(), Role.CUSTOMER);
+                : userRepository.findByAgent_IdAndRole(user.getId(), Role.CUSTOMER);
         return customers.stream().map(UserResponse::from).toList();
     }
 

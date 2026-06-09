@@ -2,15 +2,14 @@
 #
 # HOW TO RUN
 #   1. Start the service:  docker compose up --build   (seeds admin/admin)
-#   2. Open this file in IntelliJ IDEA and either run requests one-by-one (▶ in the gutter)
-#      or use "Run all requests in file".
-#   3. Tokens and resource IDs are captured automatically into global variables by the
+#   2. Open this file in IntelliJ IDEA and use "Run all requests in file" (or run them one-by-one).
+#   3. Tokens, usernames and ids are captured automatically into global variables by the
 #      response-handler scripts (the `> {% ... %}` blocks), so later requests just work.
 #
-# NOTE: the happy-path assertions assume a FRESH database (first run). For a clean slate:
-#         docker compose down -v && docker compose up --build
-#       The unhappy-path requests (401/403/404/409/400) are expected "errors" and are
-#       asserted as such — they are part of the demo, not failures.
+# RE-RUNNABLE: each run creates users with a fresh random suffix (e.g. amy-abcxyz), so the
+# happy-path creates always return 201 and the demo passes even against a non-empty database.
+# No `docker compose down -v` needed between runs. The unhappy-path requests (401/403/404/409/400/
+# 405/415) are expected "errors" and are asserted as such — they are part of the demo, not failures.
 
 @baseUrl = http://localhost:8080
 
@@ -68,28 +67,30 @@ Authorization: Bearer not-a-real-jwt
 # 2. ADMIN PROVISIONS AGENTS  (POST /api/admin/users, ADMIN-only)
 ###############################################################################
 
-### 2.1 ✅ Admin creates agent "amy" -> 201 (captures amyId)
+### 2.1 ✅ Admin creates an agent -> 201 (captures amyUser + amyId)
 POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "amy", "password": "agent123", "fullName": "Amy Agent", "email": "amy@example.com", "role": "AGENT" }
+{ "username": "amy-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Amy Agent", "email": "amy@example.com", "role": "AGENT" }
 
 > {%
     client.test("create amy -> 201", function () { client.assert(response.status === 201); });
     client.test("amy is AGENT", function () { client.assert(response.body.role === "AGENT"); });
+    client.global.set("amyUser", response.body.username);
     client.global.set("amyId", response.body.id);
 %}
 
-### 2.2 ✅ Admin creates agent "bob" -> 201 (captures bobId)
+### 2.2 ✅ Admin creates a second agent -> 201 (captures bobUser + bobId)
 POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "bob", "password": "agent123", "fullName": "Bob Agent", "email": "bob@example.com", "role": "AGENT" }
+{ "username": "bob-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Bob Agent", "email": "bob@example.com", "role": "AGENT" }
 
 > {%
     client.test("create bob -> 201", function () { client.assert(response.status === 201); });
+    client.global.set("bobUser", response.body.username);
     client.global.set("bobId", response.body.id);
 %}
 
@@ -97,7 +98,7 @@ Content-Type: application/json
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
-{ "username": "amy", "password": "agent123" }
+{ "username": "{{amyUser}}", "password": "agent123" }
 
 > {%
     client.test("login amy -> 200", function () { client.assert(response.status === 200); });
@@ -108,7 +109,7 @@ Content-Type: application/json
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
-{ "username": "bob", "password": "agent123" }
+{ "username": "{{bobUser}}", "password": "agent123" }
 
 > {%
     client.test("login bob -> 200", function () { client.assert(response.status === 200); });
@@ -120,16 +121,16 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{amyToken}}
 Content-Type: application/json
 
-{ "username": "mallory", "password": "agent123", "fullName": "Mallory", "email": "m@example.com", "role": "AGENT" }
+{ "username": "mallory-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Mallory", "email": "m@example.com", "role": "AGENT" }
 
 > {% client.test("agent cannot provision -> 403", function () { client.assert(response.status === 403); }); %}
 
-### 2.6 ❌ Duplicate username -> 409
+### 2.6 ❌ Duplicate username (re-use amy's) -> 409
 POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "amy", "password": "agent123", "fullName": "Amy 2", "email": "amy2@example.com", "role": "AGENT" }
+{ "username": "{{amyUser}}", "password": "agent123", "fullName": "Amy 2", "email": "amy2@example.com", "role": "AGENT" }
 
 > {% client.test("duplicate username -> 409", function () { client.assert(response.status === 409); }); %}
 
@@ -147,7 +148,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "orphan", "password": "cust123", "fullName": "Orphan", "email": "o@example.com", "role": "CUSTOMER" }
+{ "username": "orphan-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Orphan", "email": "o@example.com", "role": "CUSTOMER" }
 
 > {% client.test("customer needs agentId -> 400", function () { client.assert(response.status === 400); }); %}
 
@@ -156,7 +157,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "weird", "password": "agent123", "fullName": "Weird", "email": "w@example.com", "role": "AGENT", "agentId": {{amyId}} }
+{ "username": "weird-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Weird", "email": "w@example.com", "role": "AGENT", "agentId": {{amyId}} }
 
 > {% client.test("agentId invalid for agent -> 400", function () { client.assert(response.status === 400); }); %}
 
@@ -165,7 +166,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "nope", "password": "cust123", "fullName": "Nope", "email": "n@example.com", "role": "CUSTOMER", "agentId": 999999 }
+{ "username": "nope-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Nope", "email": "n@example.com", "role": "CUSTOMER", "agentId": 999999 }
 
 > {% client.test("missing agent -> 404", function () { client.assert(response.status === 404); }); %}
 
@@ -173,28 +174,30 @@ Content-Type: application/json
 # 3. CUSTOMER MANAGEMENT  (/api/customers)
 ###############################################################################
 
-### 3.1 ✅ Agent amy creates customer "carol" (under amy) -> 201 (captures carolId)
+### 3.1 ✅ Agent amy creates a customer (under amy) -> 201 (captures carolUser + carolId)
 POST {{baseUrl}}/api/customers
 Authorization: Bearer {{amyToken}}
 Content-Type: application/json
 
-{ "username": "carol", "password": "cust123", "fullName": "Carol Customer", "email": "carol@example.com" }
+{ "username": "carol-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Carol Customer", "email": "carol@example.com" }
 
 > {%
     client.test("create carol -> 201", function () { client.assert(response.status === 201); });
     client.test("carol registered under amy", function () { client.assert(response.body.agentId === client.global.get("amyId")); });
+    client.global.set("carolUser", response.body.username);
     client.global.set("carolId", response.body.id);
 %}
 
-### 3.2 ✅ Agent bob creates customer "dave" (under bob) -> 201
+### 3.2 ✅ Agent bob creates a customer (under bob) -> 201 (captures daveUser + daveId)
 POST {{baseUrl}}/api/customers
 Authorization: Bearer {{bobToken}}
 Content-Type: application/json
 
-{ "username": "dave", "password": "cust123", "fullName": "Dave Customer", "email": "dave@example.com" }
+{ "username": "dave-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Dave Customer", "email": "dave@example.com" }
 
 > {%
     client.test("create dave -> 201", function () { client.assert(response.status === 201); });
+    client.global.set("daveUser", response.body.username);
     client.global.set("daveId", response.body.id);
 %}
 
@@ -202,25 +205,25 @@ Content-Type: application/json
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
-{ "username": "carol", "password": "cust123" }
+{ "username": "{{carolUser}}", "password": "cust123" }
 
 > {%
     client.test("login carol -> 200", function () { client.assert(response.status === 200); });
     client.global.set("carolToken", response.body.accessToken);
 %}
 
-### 3.4 ✅ Agent amy lists customers -> only "carol"
+### 3.4 ✅ Agent amy lists customers -> only her own (amy is fresh this run)
 GET {{baseUrl}}/api/customers
 Authorization: Bearer {{amyToken}}
 
 > {%
     client.test("amy lists -> 200", function () { client.assert(response.status === 200); });
     client.test("amy sees only carol", function () {
-        client.assert(response.body.length === 1 && response.body[0].username === "carol");
+        client.assert(response.body.length === 1 && response.body[0].username === client.global.get("carolUser"));
     });
 %}
 
-### 3.5 ✅ Admin lists customers -> all customers
+### 3.5 ✅ Admin lists customers -> all customers (>= the 2 created this run)
 GET {{baseUrl}}/api/customers
 Authorization: Bearer {{adminToken}}
 
@@ -234,7 +237,7 @@ POST {{baseUrl}}/api/customers
 Authorization: Bearer {{carolToken}}
 Content-Type: application/json
 
-{ "username": "eve", "password": "cust123", "fullName": "Eve", "email": "eve@example.com" }
+{ "username": "eve-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Eve", "email": "eve@example.com" }
 
 > {% client.test("customer cannot create -> 403", function () { client.assert(response.status === 403); }); %}
 
@@ -244,12 +247,12 @@ Authorization: Bearer {{carolToken}}
 
 > {% client.test("customer cannot list -> 403", function () { client.assert(response.status === 403); }); %}
 
-### 3.8 ❌ Duplicate customer username -> 409
+### 3.8 ❌ Duplicate customer username (re-use carol's) -> 409
 POST {{baseUrl}}/api/customers
 Authorization: Bearer {{amyToken}}
 Content-Type: application/json
 
-{ "username": "carol", "password": "cust123", "fullName": "Carol Again", "email": "c2@example.com" }
+{ "username": "{{carolUser}}", "password": "cust123", "fullName": "Carol Again", "email": "c2@example.com" }
 
 > {% client.test("duplicate customer -> 409", function () { client.assert(response.status === 409); }); %}
 
@@ -291,7 +294,7 @@ Content-Type: application/json
 > {%
     client.test("create ticket -> 201", function () { client.assert(response.status === 201); });
     client.test("ticket OPEN & owned by carol", function () {
-        client.assert(response.body.status === "OPEN" && response.body.ownerUsername === "carol");
+        client.assert(response.body.status === "OPEN" && response.body.ownerUsername === client.global.get("carolUser"));
     });
     client.global.set("ticketId", response.body.id);
 %}
@@ -327,11 +330,11 @@ Authorization: Bearer {{amyToken}}
 > {%
     client.test("amy lists tickets -> 200", function () { client.assert(response.status === 200); });
     client.test("amy sees carol's ticket", function () {
-        client.assert(response.body.length >= 1 && response.body[0].ownerUsername === "carol");
+        client.assert(response.body.length >= 1 && response.body[0].ownerUsername === client.global.get("carolUser"));
     });
 %}
 
-### 4.6 ❌ Other agent bob does NOT see carol's ticket -> empty list
+### 4.6 ❌ Other agent bob does NOT see carol's ticket -> empty list (bob's customer dave has none)
 GET {{baseUrl}}/api/tickets
 Authorization: Bearer {{bobToken}}
 
@@ -358,7 +361,7 @@ Authorization: Bearer {{amyToken}}
 
 > {% client.test("filter OPEN -> >=1", function () { client.assert(response.status === 200 && response.body.length >= 1); }); %}
 
-### 4.10 ✅ Agent filters by status=CLOSED -> empty
+### 4.10 ✅ Agent filters by status=CLOSED -> empty (the ticket is OPEN)
 GET {{baseUrl}}/api/tickets?status=CLOSED
 Authorization: Bearer {{amyToken}}
 
@@ -446,7 +449,7 @@ Content-Type: application/json
     client.test("role unchanged (no escalation)", function () { client.assert(response.body.role === "CUSTOMER"); });
 %}
 
-### 5.6 ✅ carol changes her password -> 200, then re-login with the new password
+### 5.6 ✅ carol changes her password -> 200
 PUT {{baseUrl}}/api/users/me
 Authorization: Bearer {{carolToken}}
 Content-Type: application/json
@@ -459,7 +462,7 @@ Content-Type: application/json
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
-{ "username": "carol", "password": "newpass123" }
+{ "username": "{{carolUser}}", "password": "newpass123" }
 
 > {%
     client.test("re-login new password -> 200", function () { client.assert(response.status === 200); });
@@ -470,6 +473,31 @@ Content-Type: application/json
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
-{ "username": "carol", "password": "cust123" }
+{ "username": "{{carolUser}}", "password": "cust123" }
 
 > {% client.test("old password rejected -> 401", function () { client.assert(response.status === 401); }); %}
+
+###############################################################################
+# 6. ERROR STATUS CODES  (correct status per error type, not blanket 500)
+###############################################################################
+
+### 6.1 ❌ Unsupported HTTP method (DELETE not mapped) -> 405
+DELETE {{baseUrl}}/api/users/me
+Authorization: Bearer {{carolToken}}
+
+> {% client.test("unsupported method -> 405", function () { client.assert(response.status === 405); }); %}
+
+### 6.2 ❌ Unsupported media type (text/plain body) -> 415
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{carolToken}}
+Content-Type: text/plain
+
+hello
+
+> {% client.test("unsupported media type -> 415", function () { client.assert(response.status === 415); }); %}
+
+### 6.3 ❌ Unknown path (authenticated) -> 404
+GET {{baseUrl}}/api/does-not-exist
+Authorization: Bearer {{adminToken}}
+
+> {% client.test("unknown path -> 404", function () { client.assert(response.status === 404); }); %}

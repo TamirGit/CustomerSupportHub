@@ -2,6 +2,8 @@ package com.example.supporthub.security;
 
 import com.example.supporthub.config.JwtProperties;
 import com.example.supporthub.domain.User;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -39,6 +41,9 @@ public class JwtService {
                 .claim("uid", user.getId())
                 .claim("roles", user.getRole().name())
                 .build();
-        return encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+        // Must declare HS256 explicitly: NimbusJwtEncoder otherwise defaults the header to RS256,
+        // which has no matching key in our symmetric-secret JWK source and fails to encode.
+        JwsHeader jwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
+        return encoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
     }
 }

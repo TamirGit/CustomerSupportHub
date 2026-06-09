@@ -1,0 +1,38 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: support-hub-mysql
+    environment:
+      MYSQL_DATABASE: support_hub
+      MYSQL_USER: support
+      MYSQL_PASSWORD: support
+      MYSQL_ROOT_PASSWORD: rootpw
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpw"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    container_name: support-hub-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/support_hub?serverTimezone=UTC
+      DB_USER: support
+      DB_PASSWORD: support
+      # Override these in any real deployment.
+      JWT_SECRET: change-me-in-production-this-is-a-dev-only-secret-please-rotate
+      SEED_ADMIN_USERNAME: admin
+      SEED_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:

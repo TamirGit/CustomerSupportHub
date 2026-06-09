@@ -1,0 +1,22 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Local env overrides
+.env
+
+# Assignment brief (not part of the deliverable source)
+assignment.pdf

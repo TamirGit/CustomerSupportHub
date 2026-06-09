@@ -139,6 +139,9 @@ All request bodies are validated; errors return a JSON `ErrorResponse`
 | `GET`  | `/api/tickets` | any | List tickets (CUSTOMER → own; AGENT → their customers', optional `?status=`; ADMIN → all) |
 | `GET`  | `/api/tickets/{id}` | owner / owning-agent / ADMIN | Get a ticket |
 
+> For a full set of runnable **happy- and unhappy-path scenarios** covering every endpoint and
+> role (with expected status codes and an authorization matrix), see **[DEMO.md](DEMO.md)**.
+
 ### Example walkthrough (curl)
 
 ```bash

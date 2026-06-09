@@ -50,7 +50,7 @@ public class TicketService {
                     : ticketRepository.findByOwner_Agent_IdAndStatus(user.getId(), statusFilter);
             case ADMIN -> statusFilter == null
                     ? ticketRepository.findAll()
-                    : ticketRepository.findAll().stream().filter(t -> t.getStatus() == statusFilter).toList();
+                    : ticketRepository.findByStatus(statusFilter);
         };
         return tickets.stream().map(TicketResponse::from).toList();
     }

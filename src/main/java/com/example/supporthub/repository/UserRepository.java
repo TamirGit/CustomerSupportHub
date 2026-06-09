@@ -19,4 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * the {@link User#getAgentId()} convenience getter and fail to resolve as a persistent attribute.
      */
     List<User> findByAgent_IdAndRole(Long agentId, Role role);
+
+    /** All users of a given role (e.g. every CUSTOMER for an admin listing). */
+    List<User> findByRole(Role role);
 }

@@ -2,6 +2,7 @@ package com.example.supporthub.service;
 
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.Ticket;
+import com.example.supporthub.domain.TicketStatus;
 import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.CreateTicketRequest;
 import com.example.supporthub.dto.TicketResponse;
@@ -85,5 +86,20 @@ class TicketServiceTest {
         assertThat(result).hasSize(1);
         verify(ticketRepository).findByOwner_Agent_Id(10L);
         verify(ticketRepository, never()).findAll(); // agent must not see all tickets
+    }
+
+    @Test
+    void listTickets_forAdminWithStatus_queriesByStatusNotFindAll() {
+        User admin = userWithId(1L, "admin", Role.ADMIN, null);
+        User customer = userWithId(5L, "cust", Role.CUSTOMER, null);
+        Ticket ticket = new Ticket("s", "d", customer);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(ticketRepository.findByStatus(TicketStatus.OPEN)).thenReturn(List.of(ticket));
+
+        List<TicketResponse> result = ticketService.listTickets("admin", TicketStatus.OPEN);
+
+        assertThat(result).hasSize(1);
+        verify(ticketRepository).findByStatus(TicketStatus.OPEN);
+        verify(ticketRepository, never()).findAll(); // must not load all tickets and filter in memory
     }
 }

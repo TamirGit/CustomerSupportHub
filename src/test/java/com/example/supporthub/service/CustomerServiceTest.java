@@ -88,4 +88,19 @@ class CustomerServiceTest {
         assertThat(result).hasSize(2).extracting(UserResponse::username).containsExactly("c1", "c2");
         verify(userRepository, never()).findAll(); // agents must not enumerate all customers
     }
+
+    @Test
+    void listCustomers_forAdmin_queriesByRoleNotFindAll() {
+        User admin = new User("admin", "h", "Admin", "admin@x.io", Role.ADMIN, null);
+        ReflectionTestUtils.setField(admin, "id", 1L);
+        User c1 = new User("c1", "h", "C1", "c1@x.io", Role.CUSTOMER, null);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(userRepository.findByRole(Role.CUSTOMER)).thenReturn(List.of(c1));
+
+        List<UserResponse> result = customerService.listCustomers("admin");
+
+        assertThat(result).hasSize(1);
+        verify(userRepository).findByRole(Role.CUSTOMER);
+        verify(userRepository, never()).findAll(); // must not load every user and filter in memory
+    }
 }

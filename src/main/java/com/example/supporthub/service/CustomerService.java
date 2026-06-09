@@ -31,12 +31,12 @@ public class CustomerService {
     }
 
     /**
-     * Registers a new customer under an agent. For an AGENT actor the owning agent is always the
-     * actor itself; for an ADMIN actor the target agent must be supplied via {@code agentId}.
+     * Registers a new customer under an agent. For an AGENT user the owning agent is always the
+     * user itself; for an ADMIN user the target agent must be supplied via {@code agentId}.
      */
-    public UserResponse createCustomer(String actorUsername, CreateCustomerRequest request) {
-        User actor = loadActor(actorUsername);
-        User owningAgent = resolveOwningAgent(actor, request.agentId());
+    public UserResponse createCustomer(String username, CreateCustomerRequest request) {
+        User user = loadUser(username);
+        User owningAgent = resolveOwningAgent(user, request.agentId());
 
         if (userRepository.existsByUsername(request.username())) {
             throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
@@ -53,30 +53,30 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> listCustomers(String actorUsername) {
-        User actor = loadActor(actorUsername);
-        List<User> customers = actor.getRole() == Role.ADMIN
+    public List<UserResponse> listCustomers(String username) {
+        User user = loadUser(username);
+        List<User> customers = user.getRole() == Role.ADMIN
                 ? userRepository.findAll().stream().filter(u -> u.getRole() == Role.CUSTOMER).toList()
-                : userRepository.findByAgentIdAndRole(actor.getId(), Role.CUSTOMER);
+                : userRepository.findByAgentIdAndRole(user.getId(), Role.CUSTOMER);
         return customers.stream().map(UserResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getCustomer(String actorUsername, Long customerId) {
-        User actor = loadActor(actorUsername);
+    public UserResponse getCustomer(String username, Long customerId) {
+        User user = loadUser(username);
         User customer = userRepository.findById(customerId)
                 .filter(u -> u.getRole() == Role.CUSTOMER)
                 .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
 
-        if (!canAccessCustomer(actor, customer)) {
+        if (!canAccessCustomer(user, customer)) {
             throw new AccessDeniedException("You are not permitted to view this customer");
         }
         return UserResponse.from(customer);
     }
 
-    private User resolveOwningAgent(User actor, Long requestedAgentId) {
-        if (actor.getRole() == Role.AGENT) {
-            return actor;
+    private User resolveOwningAgent(User user, Long requestedAgentId) {
+        if (user.getRole() == Role.AGENT) {
+            return user;
         }
         // ADMIN must name the agent the customer belongs to.
         if (requestedAgentId == null) {
@@ -90,15 +90,15 @@ public class CustomerService {
         return agent;
     }
 
-    private boolean canAccessCustomer(User actor, User customer) {
-        return switch (actor.getRole()) {
+    private boolean canAccessCustomer(User user, User customer) {
+        return switch (user.getRole()) {
             case ADMIN -> true;
-            case AGENT -> actor.getId().equals(customer.getAgentId());
-            case CUSTOMER -> actor.getId().equals(customer.getId());
+            case AGENT -> user.getId().equals(customer.getAgentId());
+            case CUSTOMER -> user.getId().equals(customer.getId());
         };
     }
 
-    private User loadActor(String username) {
+    private User loadUser(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("User '" + username + "' not found"));
     }

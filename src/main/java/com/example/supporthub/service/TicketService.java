@@ -31,23 +31,23 @@ public class TicketService {
         this.userRepository = userRepository;
     }
 
-    public TicketResponse createTicket(String actorUsername, CreateTicketRequest request) {
-        User actor = loadActor(actorUsername);
-        if (actor.getRole() != Role.CUSTOMER) {
+    public TicketResponse createTicket(String username, CreateTicketRequest request) {
+        User user = loadUser(username);
+        if (user.getRole() != Role.CUSTOMER) {
             throw new AccessDeniedException("Only customers can open tickets");
         }
-        Ticket ticket = new Ticket(request.subject(), request.description(), actor);
+        Ticket ticket = new Ticket(request.subject(), request.description(), user);
         return TicketResponse.from(ticketRepository.save(ticket));
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> listTickets(String actorUsername, TicketStatus statusFilter) {
-        User actor = loadActor(actorUsername);
-        List<Ticket> tickets = switch (actor.getRole()) {
-            case CUSTOMER -> ticketRepository.findByOwnerId(actor.getId());
+    public List<TicketResponse> listTickets(String username, TicketStatus statusFilter) {
+        User user = loadUser(username);
+        List<Ticket> tickets = switch (user.getRole()) {
+            case CUSTOMER -> ticketRepository.findByOwnerId(user.getId());
             case AGENT -> statusFilter == null
-                    ? ticketRepository.findByOwner_AgentId(actor.getId())
-                    : ticketRepository.findByOwner_AgentIdAndStatus(actor.getId(), statusFilter);
+                    ? ticketRepository.findByOwner_AgentId(user.getId())
+                    : ticketRepository.findByOwner_AgentIdAndStatus(user.getId(), statusFilter);
             case ADMIN -> statusFilter == null
                     ? ticketRepository.findAll()
                     : ticketRepository.findAll().stream().filter(t -> t.getStatus() == statusFilter).toList();
@@ -56,26 +56,26 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public TicketResponse getTicket(String actorUsername, Long ticketId) {
-        User actor = loadActor(actorUsername);
+    public TicketResponse getTicket(String username, Long ticketId) {
+        User user = loadUser(username);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket " + ticketId + " not found"));
-        if (!canAccessTicket(actor, ticket)) {
+        if (!canAccessTicket(user, ticket)) {
             throw new AccessDeniedException("You are not permitted to view this ticket");
         }
         return TicketResponse.from(ticket);
     }
 
-    private boolean canAccessTicket(User actor, Ticket ticket) {
+    private boolean canAccessTicket(User user, Ticket ticket) {
         User owner = ticket.getOwner();
-        return switch (actor.getRole()) {
+        return switch (user.getRole()) {
             case ADMIN -> true;
-            case CUSTOMER -> actor.getId().equals(owner.getId());
-            case AGENT -> actor.getId().equals(owner.getAgentId());
+            case CUSTOMER -> user.getId().equals(owner.getId());
+            case AGENT -> user.getId().equals(owner.getAgentId());
         };
     }
 
-    private User loadActor(String username) {
+    private User loadUser(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("User '" + username + "' not found"));
     }

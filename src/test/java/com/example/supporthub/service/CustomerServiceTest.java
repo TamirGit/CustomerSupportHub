@@ -16,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,7 +45,7 @@ class CustomerServiceTest {
     @Test
     void createCustomer_registersCustomerUnderCallingAgent() {
         User agent = agent(10L, "agent1");
-        when(userRepository.findByUsername("agent1")).thenReturn(Optional.of(agent));
+        when(userRepository.requireByUsername("agent1")).thenReturn(agent);
         when(userRepository.existsByUsername("bob")).thenReturn(false);
         when(passwordEncoder.encode("secret123")).thenReturn("ENCODED");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -65,7 +64,7 @@ class CustomerServiceTest {
 
     @Test
     void createCustomer_rejectsDuplicateUsername() {
-        when(userRepository.findByUsername("agent1")).thenReturn(Optional.of(agent(10L, "agent1")));
+        when(userRepository.requireByUsername("agent1")).thenReturn(agent(10L, "agent1"));
         when(userRepository.existsByUsername("bob")).thenReturn(true);
 
         assertThatThrownBy(() -> customerService.createCustomer("agent1",
@@ -77,7 +76,7 @@ class CustomerServiceTest {
 
     @Test
     void createCustomer_rejectsDuplicateEmail() {
-        when(userRepository.findByUsername("agent1")).thenReturn(Optional.of(agent(10L, "agent1")));
+        when(userRepository.requireByUsername("agent1")).thenReturn(agent(10L, "agent1"));
         when(userRepository.existsByUsername("bob")).thenReturn(false);
         when(userRepository.existsByEmail("bob@x.io")).thenReturn(true);
 
@@ -93,7 +92,7 @@ class CustomerServiceTest {
         User agent = agent(10L, "agent1");
         User c1 = new User("c1", "h", "C1", "c1@x.io", Role.CUSTOMER, agent);
         User c2 = new User("c2", "h", "C2", "c2@x.io", Role.CUSTOMER, agent);
-        when(userRepository.findByUsername("agent1")).thenReturn(Optional.of(agent));
+        when(userRepository.requireByUsername("agent1")).thenReturn(agent);
         when(userRepository.findByAgent_IdAndRole(10L, Role.CUSTOMER)).thenReturn(List.of(c1, c2));
 
         List<UserResponse> result = customerService.listCustomers("agent1");
@@ -107,7 +106,7 @@ class CustomerServiceTest {
         User admin = new User("admin", "h", "Admin", "admin@x.io", Role.ADMIN, null);
         ReflectionTestUtils.setField(admin, "id", 1L);
         User c1 = new User("c1", "h", "C1", "c1@x.io", Role.CUSTOMER, null);
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(userRepository.requireByUsername("admin")).thenReturn(admin);
         when(userRepository.findByRole(Role.CUSTOMER)).thenReturn(List.of(c1));
 
         List<UserResponse> result = customerService.listCustomers("admin");

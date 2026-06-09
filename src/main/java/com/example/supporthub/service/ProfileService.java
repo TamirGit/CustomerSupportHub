@@ -5,7 +5,6 @@ import com.example.supporthub.dto.UpdateProfileRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
 import com.example.supporthub.web.error.DuplicateResourceException;
-import com.example.supporthub.web.error.NotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +28,11 @@ public class ProfileService {
 
     @Transactional(readOnly = true)
     public UserResponse getMyProfile(String username) {
-        return UserResponse.from(loadUser(username));
+        return UserResponse.from(userRepository.requireByUsername(username));
     }
 
     public UserResponse updateMyProfile(String username, UpdateProfileRequest request) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         if (StringUtils.hasText(request.fullName())) {
             user.setFullName(request.fullName());
         }
@@ -47,10 +46,5 @@ public class ProfileService {
             user.setPasswordHash(passwordEncoder.encode(request.password()));
         }
         return UserResponse.from(userRepository.save(user));
-    }
-
-    private User loadUser(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("User '" + username + "' not found"));
     }
 }

@@ -35,7 +35,7 @@ public class CustomerService {
      * user itself; for an ADMIN user the target agent must be supplied via {@code agentId}.
      */
     public UserResponse createCustomer(String username, CreateCustomerRequest request) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         User owningAgent = resolveOwningAgent(user, request.agentId());
 
         if (userRepository.existsByUsername(request.username())) {
@@ -57,7 +57,7 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public List<UserResponse> listCustomers(String username) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         List<User> customers = user.getRole() == Role.ADMIN
                 ? userRepository.findByRole(Role.CUSTOMER)
                 : userRepository.findByAgent_IdAndRole(user.getId(), Role.CUSTOMER);
@@ -66,7 +66,7 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public UserResponse getCustomer(String username, Long customerId) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         User customer = userRepository.findById(customerId)
                 .filter(u -> u.getRole() == Role.CUSTOMER)
                 .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
@@ -99,10 +99,5 @@ public class CustomerService {
             case AGENT -> user.getId().equals(customer.getAgentId());
             case CUSTOMER -> user.getId().equals(customer.getId());
         };
-    }
-
-    private User loadUser(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("User '" + username + "' not found"));
     }
 }

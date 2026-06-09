@@ -13,8 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,7 +39,7 @@ class ProfileServiceTest {
 
     @Test
     void updateMyProfile_appliesNewUniqueEmail() {
-        when(userRepository.findByUsername("carol")).thenReturn(Optional.of(carol()));
+        when(userRepository.requireByUsername("carol")).thenReturn(carol());
         when(userRepository.existsByEmail("new@x.io")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -54,7 +52,7 @@ class ProfileServiceTest {
 
     @Test
     void updateMyProfile_rejectsEmailAlreadyTaken() {
-        when(userRepository.findByUsername("carol")).thenReturn(Optional.of(carol()));
+        when(userRepository.requireByUsername("carol")).thenReturn(carol());
         when(userRepository.existsByEmail("taken@x.io")).thenReturn(true);
 
         assertThatThrownBy(() -> profileService.updateMyProfile("carol",
@@ -66,7 +64,7 @@ class ProfileServiceTest {
 
     @Test
     void updateMyProfile_keepingOwnEmail_skipsUniquenessCheck() {
-        when(userRepository.findByUsername("carol")).thenReturn(Optional.of(carol()));
+        when(userRepository.requireByUsername("carol")).thenReturn(carol());
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // Same email (case-insensitive) must not trip the uniqueness check against itself.

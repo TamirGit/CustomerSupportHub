@@ -19,6 +19,9 @@ import java.time.temporal.ChronoUnit;
 @Service
 public class JwtService {
 
+    /** Issuer claim stamped on every token and validated on decode (see {@code JwtConfig}). */
+    public static final String ISSUER = "customer-support-hub";
+
     private final JwtEncoder encoder;
     private final JwtProperties properties;
 
@@ -34,7 +37,7 @@ public class JwtService {
     public String generateToken(User user) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("customer-support-hub")
+                .issuer(ISSUER)
                 .issuedAt(now)
                 .expiresAt(now.plus(properties.ttlSeconds(), ChronoUnit.SECONDS))
                 .subject(user.getUsername())

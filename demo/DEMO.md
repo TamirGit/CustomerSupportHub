@@ -5,6 +5,17 @@ test it by hand, and demonstrate it to others. Each scenario states its **purpos
 **command**, and the **expected result** (HTTP status + notable response). Both **happy** and
 **unhappy** paths are covered for every role and endpoint.
 
+## Two ways to run
+
+1. **One-click (recommended):** open [`customer-support-hub.http`](customer-support-hub.http) in
+   IntelliJ IDEA and use **Run all requests in file** (or run them one-by-one). Tokens and resource
+   IDs are captured automatically between requests, and each request carries an assertion on its
+   expected status, so a green run = the whole authorization model behaves correctly. Assumes a
+   fresh DB (`docker compose down -v && docker compose up --build`).
+2. **By hand / for explanation:** the `curl` scenarios below. This document is the narrative
+   companion to the `.http` file — same scenarios, with expected responses spelled out, good for
+   walking someone through the behavior.
+
 ---
 
 ## 0. Prerequisites & conventions

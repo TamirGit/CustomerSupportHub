@@ -140,7 +140,9 @@ All request bodies are validated; errors return a JSON `ErrorResponse`
 | `GET`  | `/api/tickets/{id}` | owner / owning-agent / ADMIN | Get a ticket |
 
 > For a full set of runnable **happy- and unhappy-path scenarios** covering every endpoint and
-> role (with expected status codes and an authorization matrix), see **[DEMO.md](DEMO.md)**.
+> role, see the **[`demo/`](demo/)** folder: a one-click IntelliJ
+> **[`.http` file](demo/customer-support-hub.http)** and a narrative **[DEMO.md](demo/DEMO.md)**
+> (with expected status codes and an authorization matrix).
 
 ### Example walkthrough (curl)
 

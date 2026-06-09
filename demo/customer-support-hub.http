@@ -1,0 +1,475 @@
+### Customer Support Hub — runnable demo (IntelliJ HTTP Client)
+#
+# HOW TO RUN
+#   1. Start the service:  docker compose up --build   (seeds admin/admin)
+#   2. Open this file in IntelliJ IDEA and either run requests one-by-one (▶ in the gutter)
+#      or use "Run all requests in file".
+#   3. Tokens and resource IDs are captured automatically into global variables by the
+#      response-handler scripts (the `> {% ... %}` blocks), so later requests just work.
+#
+# NOTE: the happy-path assertions assume a FRESH database (first run). For a clean slate:
+#         docker compose down -v && docker compose up --build
+#       The unhappy-path requests (401/403/404/409/400) are expected "errors" and are
+#       asserted as such — they are part of the demo, not failures.
+
+@baseUrl = http://localhost:8080
+
+###############################################################################
+# 1. AUTHENTICATION
+###############################################################################
+
+### 1.1 ✅ Login as seeded admin -> 200 (captures adminToken)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "admin" }
+
+> {%
+    client.test("login admin -> 200", function () { client.assert(response.status === 200); });
+    client.global.set("adminToken", response.body.accessToken);
+%}
+
+### 1.2 ❌ Wrong password -> 401
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "wrong" }
+
+> {% client.test("wrong password -> 401", function () { client.assert(response.status === 401); }); %}
+
+### 1.3 ❌ Unknown user -> 401 (same generic message; existence not revealed)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "ghost", "password": "whatever" }
+
+> {% client.test("unknown user -> 401", function () { client.assert(response.status === 401); }); %}
+
+### 1.4 ❌ Missing password -> 400 (validation)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "admin" }
+
+> {% client.test("missing password -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 1.5 ❌ Protected endpoint without a token -> 401
+GET {{baseUrl}}/api/users/me
+
+> {% client.test("no token -> 401", function () { client.assert(response.status === 401); }); %}
+
+### 1.6 ❌ Protected endpoint with an invalid token -> 401
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer not-a-real-jwt
+
+> {% client.test("bad token -> 401", function () { client.assert(response.status === 401); }); %}
+
+###############################################################################
+# 2. ADMIN PROVISIONS AGENTS  (POST /api/admin/users, ADMIN-only)
+###############################################################################
+
+### 2.1 ✅ Admin creates agent "amy" -> 201 (captures amyId)
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "amy", "password": "agent123", "fullName": "Amy Agent", "email": "amy@example.com", "role": "AGENT" }
+
+> {%
+    client.test("create amy -> 201", function () { client.assert(response.status === 201); });
+    client.test("amy is AGENT", function () { client.assert(response.body.role === "AGENT"); });
+    client.global.set("amyId", response.body.id);
+%}
+
+### 2.2 ✅ Admin creates agent "bob" -> 201 (captures bobId)
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "bob", "password": "agent123", "fullName": "Bob Agent", "email": "bob@example.com", "role": "AGENT" }
+
+> {%
+    client.test("create bob -> 201", function () { client.assert(response.status === 201); });
+    client.global.set("bobId", response.body.id);
+%}
+
+### 2.3 ✅ Log in as amy -> 200 (captures amyToken)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "amy", "password": "agent123" }
+
+> {%
+    client.test("login amy -> 200", function () { client.assert(response.status === 200); });
+    client.global.set("amyToken", response.body.accessToken);
+%}
+
+### 2.4 ✅ Log in as bob -> 200 (captures bobToken)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "bob", "password": "agent123" }
+
+> {%
+    client.test("login bob -> 200", function () { client.assert(response.status === 200); });
+    client.global.set("bobToken", response.body.accessToken);
+%}
+
+### 2.5 ❌ Non-admin (agent) tries to provision a user -> 403
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "username": "mallory", "password": "agent123", "fullName": "Mallory", "email": "m@example.com", "role": "AGENT" }
+
+> {% client.test("agent cannot provision -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 2.6 ❌ Duplicate username -> 409
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "amy", "password": "agent123", "fullName": "Amy 2", "email": "amy2@example.com", "role": "AGENT" }
+
+> {% client.test("duplicate username -> 409", function () { client.assert(response.status === 409); }); %}
+
+### 2.7 ❌ Invalid body (bad email, short password, missing role) -> 400
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "x", "password": "123", "fullName": "X", "email": "not-an-email" }
+
+> {% client.test("invalid body -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 2.8 ❌ Create CUSTOMER without agentId -> 400
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "orphan", "password": "cust123", "fullName": "Orphan", "email": "o@example.com", "role": "CUSTOMER" }
+
+> {% client.test("customer needs agentId -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 2.9 ❌ Provide agentId when creating an AGENT -> 400
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "weird", "password": "agent123", "fullName": "Weird", "email": "w@example.com", "role": "AGENT", "agentId": {{amyId}} }
+
+> {% client.test("agentId invalid for agent -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 2.10 ❌ Create CUSTOMER under a non-existent agent -> 404
+POST {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "nope", "password": "cust123", "fullName": "Nope", "email": "n@example.com", "role": "CUSTOMER", "agentId": 999999 }
+
+> {% client.test("missing agent -> 404", function () { client.assert(response.status === 404); }); %}
+
+###############################################################################
+# 3. CUSTOMER MANAGEMENT  (/api/customers)
+###############################################################################
+
+### 3.1 ✅ Agent amy creates customer "carol" (under amy) -> 201 (captures carolId)
+POST {{baseUrl}}/api/customers
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "username": "carol", "password": "cust123", "fullName": "Carol Customer", "email": "carol@example.com" }
+
+> {%
+    client.test("create carol -> 201", function () { client.assert(response.status === 201); });
+    client.test("carol registered under amy", function () { client.assert(response.body.agentId === client.global.get("amyId")); });
+    client.global.set("carolId", response.body.id);
+%}
+
+### 3.2 ✅ Agent bob creates customer "dave" (under bob) -> 201
+POST {{baseUrl}}/api/customers
+Authorization: Bearer {{bobToken}}
+Content-Type: application/json
+
+{ "username": "dave", "password": "cust123", "fullName": "Dave Customer", "email": "dave@example.com" }
+
+> {%
+    client.test("create dave -> 201", function () { client.assert(response.status === 201); });
+    client.global.set("daveId", response.body.id);
+%}
+
+### 3.3 ✅ Log in as carol -> 200 (captures carolToken)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "carol", "password": "cust123" }
+
+> {%
+    client.test("login carol -> 200", function () { client.assert(response.status === 200); });
+    client.global.set("carolToken", response.body.accessToken);
+%}
+
+### 3.4 ✅ Agent amy lists customers -> only "carol"
+GET {{baseUrl}}/api/customers
+Authorization: Bearer {{amyToken}}
+
+> {%
+    client.test("amy lists -> 200", function () { client.assert(response.status === 200); });
+    client.test("amy sees only carol", function () {
+        client.assert(response.body.length === 1 && response.body[0].username === "carol");
+    });
+%}
+
+### 3.5 ✅ Admin lists customers -> all customers
+GET {{baseUrl}}/api/customers
+Authorization: Bearer {{adminToken}}
+
+> {%
+    client.test("admin lists -> 200", function () { client.assert(response.status === 200); });
+    client.test("admin sees >= 2", function () { client.assert(response.body.length >= 2); });
+%}
+
+### 3.6 ❌ A CUSTOMER tries to create a customer -> 403
+POST {{baseUrl}}/api/customers
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "username": "eve", "password": "cust123", "fullName": "Eve", "email": "eve@example.com" }
+
+> {% client.test("customer cannot create -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 3.7 ❌ A CUSTOMER tries to list customers -> 403
+GET {{baseUrl}}/api/customers
+Authorization: Bearer {{carolToken}}
+
+> {% client.test("customer cannot list -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 3.8 ❌ Duplicate customer username -> 409
+POST {{baseUrl}}/api/customers
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "username": "carol", "password": "cust123", "fullName": "Carol Again", "email": "c2@example.com" }
+
+> {% client.test("duplicate customer -> 409", function () { client.assert(response.status === 409); }); %}
+
+### 3.9 ✅ Agent amy reads her own customer by id -> 200
+GET {{baseUrl}}/api/customers/{{carolId}}
+Authorization: Bearer {{amyToken}}
+
+> {% client.test("amy reads own customer -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 3.10 ❌ Agent bob reads amy's customer -> 403 (ownership)
+GET {{baseUrl}}/api/customers/{{carolId}}
+Authorization: Bearer {{bobToken}}
+
+> {% client.test("cross-agent read -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 3.11 ✅ Customer carol reads her own record -> 200
+GET {{baseUrl}}/api/customers/{{carolId}}
+Authorization: Bearer {{carolToken}}
+
+> {% client.test("carol reads self -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 3.12 ❌ Read a non-existent customer id -> 404
+GET {{baseUrl}}/api/customers/999999
+Authorization: Bearer {{adminToken}}
+
+> {% client.test("missing customer -> 404", function () { client.assert(response.status === 404); }); %}
+
+###############################################################################
+# 4. TICKETS  (/api/tickets)
+###############################################################################
+
+### 4.1 ✅ Customer carol opens a ticket -> 201 (captures ticketId)
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "subject": "Cannot log in", "description": "I get a 500 error on login" }
+
+> {%
+    client.test("create ticket -> 201", function () { client.assert(response.status === 201); });
+    client.test("ticket OPEN & owned by carol", function () {
+        client.assert(response.body.status === "OPEN" && response.body.ownerUsername === "carol");
+    });
+    client.global.set("ticketId", response.body.id);
+%}
+
+### 4.2 ✅ carol lists her tickets -> sees her own
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{carolToken}}
+
+> {%
+    client.test("carol lists -> 200", function () { client.assert(response.status === 200); });
+    client.test("carol sees >= 1", function () { client.assert(response.body.length >= 1); });
+%}
+
+### 4.3 ✅ carol reads her ticket by id -> 200
+GET {{baseUrl}}/api/tickets/{{ticketId}}
+Authorization: Bearer {{carolToken}}
+
+> {% client.test("carol reads own ticket -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 4.4 ❌ An AGENT tries to open a ticket -> 403 (only customers)
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "subject": "Agent ticket", "description": "should not be allowed" }
+
+> {% client.test("agent cannot open ticket -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 4.5 ✅ Owning agent amy sees her customers' tickets
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{amyToken}}
+
+> {%
+    client.test("amy lists tickets -> 200", function () { client.assert(response.status === 200); });
+    client.test("amy sees carol's ticket", function () {
+        client.assert(response.body.length >= 1 && response.body[0].ownerUsername === "carol");
+    });
+%}
+
+### 4.6 ❌ Other agent bob does NOT see carol's ticket -> empty list
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{bobToken}}
+
+> {%
+    client.test("bob lists tickets -> 200", function () { client.assert(response.status === 200); });
+    client.test("bob sees none", function () { client.assert(response.body.length === 0); });
+%}
+
+### 4.7 ❌ bob reads carol's ticket by id -> 403 (ownership)
+GET {{baseUrl}}/api/tickets/{{ticketId}}
+Authorization: Bearer {{bobToken}}
+
+> {% client.test("cross-agent ticket read -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 4.8 ✅ Admin lists all tickets
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{adminToken}}
+
+> {% client.test("admin lists all tickets -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 4.9 ✅ Agent filters by status=OPEN -> sees the ticket
+GET {{baseUrl}}/api/tickets?status=OPEN
+Authorization: Bearer {{amyToken}}
+
+> {% client.test("filter OPEN -> >=1", function () { client.assert(response.status === 200 && response.body.length >= 1); }); %}
+
+### 4.10 ✅ Agent filters by status=CLOSED -> empty
+GET {{baseUrl}}/api/tickets?status=CLOSED
+Authorization: Bearer {{amyToken}}
+
+> {% client.test("filter CLOSED -> 0", function () { client.assert(response.status === 200 && response.body.length === 0); }); %}
+
+### 4.11 ❌ Open a ticket with a missing subject -> 400
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "description": "no subject here" }
+
+> {% client.test("missing subject -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 4.12 ❌ Read a non-existent ticket id -> 404
+GET {{baseUrl}}/api/tickets/999999
+Authorization: Bearer {{adminToken}}
+
+> {% client.test("missing ticket -> 404", function () { client.assert(response.status === 404); }); %}
+
+### 4.13 ❌ Invalid status filter value -> 400
+GET {{baseUrl}}/api/tickets?status=BOGUS
+Authorization: Bearer {{amyToken}}
+
+> {% client.test("invalid status -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 4.14 ❌ Malformed JSON body -> 400
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ this is not json
+
+> {% client.test("malformed body -> 400", function () { client.assert(response.status === 400); }); %}
+
+###############################################################################
+# 5. SELF-SERVICE PROFILE  (/api/users/me)
+###############################################################################
+
+### 5.1 ✅ carol reads her profile -> 200
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer {{carolToken}}
+
+> {%
+    client.test("carol profile -> 200", function () { client.assert(response.status === 200); });
+    client.test("carol is CUSTOMER", function () { client.assert(response.body.role === "CUSTOMER"); });
+%}
+
+### 5.2 ✅ carol updates name + email -> 200
+PUT {{baseUrl}}/api/users/me
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "fullName": "Carol C. Customer", "email": "carol.new@example.com" }
+
+> {% client.test("carol update -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 5.3 ✅ agent amy updates her own profile -> 200
+PUT {{baseUrl}}/api/users/me
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "fullName": "Amy A. Agent" }
+
+> {% client.test("amy update -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 5.4 ❌ Update with an invalid email -> 400
+PUT {{baseUrl}}/api/users/me
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "email": "nope" }
+
+> {% client.test("invalid email -> 400", function () { client.assert(response.status === 400); }); %}
+
+### 5.5 🔒 Role cannot be escalated via profile update (unknown field ignored) -> stays CUSTOMER
+PUT {{baseUrl}}/api/users/me
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "fullName": "Still A Customer", "role": "ADMIN" }
+
+> {%
+    client.test("update -> 200", function () { client.assert(response.status === 200); });
+    client.test("role unchanged (no escalation)", function () { client.assert(response.body.role === "CUSTOMER"); });
+%}
+
+### 5.6 ✅ carol changes her password -> 200, then re-login with the new password
+PUT {{baseUrl}}/api/users/me
+Authorization: Bearer {{carolToken}}
+Content-Type: application/json
+
+{ "password": "newpass123" }
+
+> {% client.test("password change -> 200", function () { client.assert(response.status === 200); }); %}
+
+### 5.7 ✅ Re-login with the new password -> 200
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "carol", "password": "newpass123" }
+
+> {%
+    client.test("re-login new password -> 200", function () { client.assert(response.status === 200); });
+    client.global.set("carolToken", response.body.accessToken);
+%}
+
+### 5.8 ❌ Login with the OLD password now fails -> 401
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "carol", "password": "cust123" }
+
+> {% client.test("old password rejected -> 401", function () { client.assert(response.status === 401); }); %}

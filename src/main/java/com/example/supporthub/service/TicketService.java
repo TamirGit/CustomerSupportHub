@@ -60,18 +60,9 @@ public class TicketService {
         User user = userRepository.requireByUsername(username);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket " + ticketId + " not found"));
-        if (!canAccessTicket(user, ticket)) {
+        if (!user.canAccessResourceOwnedBy(ticket.getOwner())) {
             throw new AccessDeniedException("You are not permitted to view this ticket");
         }
         return TicketResponse.from(ticket);
-    }
-
-    private boolean canAccessTicket(User user, Ticket ticket) {
-        User owner = ticket.getOwner();
-        return switch (user.getRole()) {
-            case ADMIN -> true;
-            case CUSTOMER -> user.getId().equals(owner.getId());
-            case AGENT -> user.getId().equals(owner.getAgentId());
-        };
     }
 }

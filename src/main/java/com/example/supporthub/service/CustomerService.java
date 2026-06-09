@@ -71,7 +71,7 @@ public class CustomerService {
                 .filter(u -> u.getRole() == Role.CUSTOMER)
                 .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
 
-        if (!canAccessCustomer(user, customer)) {
+        if (!user.canAccessResourceOwnedBy(customer)) {
             throw new AccessDeniedException("You are not permitted to view this customer");
         }
         return UserResponse.from(customer);
@@ -91,13 +91,5 @@ public class CustomerService {
             throw new IllegalArgumentException("User " + requestedAgentId + " is not an agent");
         }
         return agent;
-    }
-
-    private boolean canAccessCustomer(User user, User customer) {
-        return switch (user.getRole()) {
-            case ADMIN -> true;
-            case AGENT -> user.getId().equals(customer.getAgentId());
-            case CUSTOMER -> user.getId().equals(customer.getId());
-        };
     }
 }

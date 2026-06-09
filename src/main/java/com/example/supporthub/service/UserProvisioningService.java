@@ -12,17 +12,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Administrative user provisioning. Lets an ADMIN create users of any role — most importantly
- * AGENTs, which have no other creation path. A CUSTOMER created here must name its owning agent.
+ * Backs the <strong>ADMIN-only</strong> user-provisioning API ({@code POST /api/admin/users},
+ * guarded by {@code AdminUserController}). Lets an administrator create users of any role — most
+ * importantly AGENTs, which have no other creation path. A CUSTOMER created here must name its
+ * owning agent.
  */
 @Service
 @Transactional
-public class AdminUserService {
+public class UserProvisioningService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AdminUserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserProvisioningService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }

@@ -94,6 +94,18 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void createUser_rejectsDuplicateEmail() {
+        when(userRepository.existsByUsername("amy")).thenReturn(false);
+        when(userRepository.existsByEmail("amy@x.io")).thenReturn(true);
+
+        assertThatThrownBy(() -> adminUserService.createUser(
+                new CreateUserRequest("amy", "secret123", "Amy", "amy@x.io", Role.AGENT, null)))
+                .isInstanceOf(DuplicateResourceException.class);
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void createUser_agentIdForNonCustomer_isRejected() {
         when(userRepository.existsByUsername("amy")).thenReturn(false);
 

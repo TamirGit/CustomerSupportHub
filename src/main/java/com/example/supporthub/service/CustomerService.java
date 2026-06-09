@@ -41,6 +41,9 @@ public class CustomerService {
         if (userRepository.existsByUsername(request.username())) {
             throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
         }
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateResourceException("Email '" + request.email() + "' is already registered");
+        }
 
         User customer = new User(
                 request.username(),

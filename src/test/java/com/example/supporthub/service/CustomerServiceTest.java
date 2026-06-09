@@ -76,6 +76,19 @@ class CustomerServiceTest {
     }
 
     @Test
+    void createCustomer_rejectsDuplicateEmail() {
+        when(userRepository.findByUsername("agent1")).thenReturn(Optional.of(agent(10L, "agent1")));
+        when(userRepository.existsByUsername("bob")).thenReturn(false);
+        when(userRepository.existsByEmail("bob@x.io")).thenReturn(true);
+
+        assertThatThrownBy(() -> customerService.createCustomer("agent1",
+                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io", null)))
+                .isInstanceOf(DuplicateResourceException.class);
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void listCustomers_forAgent_returnsOnlyOwnCustomers() {
         User agent = agent(10L, "agent1");
         User c1 = new User("c1", "h", "C1", "c1@x.io", Role.CUSTOMER, agent);

@@ -31,6 +31,9 @@ public class AdminUserService {
         if (userRepository.existsByUsername(request.username())) {
             throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
         }
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateResourceException("Email '" + request.email() + "' is already registered");
+        }
         User owningAgent = resolveOwningAgent(request);
 
         User user = new User(

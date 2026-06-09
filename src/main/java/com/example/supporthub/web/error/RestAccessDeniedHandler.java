@@ -33,7 +33,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         ErrorResponse body = ErrorResponse.of(
                 HttpStatus.FORBIDDEN.value(),
                 HttpStatus.FORBIDDEN.getReasonPhrase(),
-                "Access denied: you do not have permission to perform this action",
+                GlobalExceptionHandler.ACCESS_DENIED_MESSAGE,
                 request.getRequestURI());
         objectMapper.writeValue(response.getOutputStream(), body);
     }

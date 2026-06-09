@@ -1,12 +1,15 @@
 package com.example.supporthub.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.time.Instant;
 import java.util.List;
 
 /**
  * Standard error body returned for every non-2xx response. {@code fieldErrors} is populated only
- * for validation (400) failures.
+ * for validation (400) failures and is omitted from the JSON otherwise.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ErrorResponse(
         Instant timestamp,
         int status,

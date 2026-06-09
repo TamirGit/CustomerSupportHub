@@ -13,10 +13,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsername(String username);
 
+    boolean existsByEmail(String email);
+
     /**
      * Customers registered under a given agent. The {@code Agent_Id} path explicitly traverses the
      * {@code agent} association to its {@code id}; writing it as {@code AgentId} would clash with
      * the {@link User#getAgentId()} convenience getter and fail to resolve as a persistent attribute.
      */
     List<User> findByAgent_IdAndRole(Long agentId, Role role);
+
+    /** All users of a given role (e.g. every CUSTOMER for an admin listing). */
+    List<User> findByRole(Role role);
 }

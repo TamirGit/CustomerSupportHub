@@ -6,38 +6,74 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
 
 /**
- * Translates exceptions thrown inside controllers/services into consistent {@link ErrorResponse}
- * bodies with appropriate HTTP statuses. Note: 401/403 raised in the security filter chain are
- * handled separately by {@link RestAuthenticationEntryPoint} / {@link RestAccessDeniedHandler}.
+ * Translates exceptions into consistent {@link ErrorResponse} bodies with appropriate HTTP statuses.
+ *
+ * <p>Extends {@link ResponseEntityExceptionHandler} so the standard Spring MVC exceptions
+ * (405 method-not-allowed, 415 unsupported-media-type, 404 no-handler, 400 unreadable body / missing
+ * params, etc.) keep their correct status codes — a plain catch-all would turn them all into 500.
+ * Domain and security exceptions are handled by the {@code @ExceptionHandler} methods below.
+ *
+ * <p>Note: 401/403 raised inside the security filter chain are handled separately by
+ * {@link RestAuthenticationEntryPoint} / {@link RestAccessDeniedHandler}.
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex,
-                                                          HttpServletRequest request) {
+    /** Shared so the filter-level {@link RestAccessDeniedHandler} and this advice cannot drift. */
+    public static final String ACCESS_DENIED_MESSAGE =
+            "Access denied: you do not have permission to perform this action";
+
+    // --- Standard Spring MVC exceptions (handled by the base class; we shape the body) ---
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatusCode status,
+                                                                  WebRequest request) {
         List<String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::formatFieldError)
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
-        return build(HttpStatus.BAD_REQUEST, "Request validation failed", request, fieldErrors);
+        ErrorResponse body = ErrorResponse.of(
+                status.value(), reason(status), "Request validation failed", path(request), fieldErrors);
+        return new ResponseEntity<>(body, headers, status);
     }
+
+    /**
+     * Body builder used by every base-class handler (405/415/404/400/406/...). Ensures those
+     * responses carry our standard {@link ErrorResponse} shape with the framework-chosen status.
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
+                                                             HttpHeaders headers,
+                                                             HttpStatusCode statusCode,
+                                                             WebRequest request) {
+        String message = ex.getMessage() != null ? ex.getMessage() : reason(statusCode);
+        ErrorResponse errorResponse = ErrorResponse.of(
+                statusCode.value(), reason(statusCode), message, path(request), null);
+        return new ResponseEntity<>(errorResponse, headers, statusCode);
+    }
+
+    // --- Application & security exceptions (not covered by the base class) ---
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex,
@@ -55,12 +91,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, request, null);
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex,
-                                                           HttpServletRequest request) {
-        return build(HttpStatus.BAD_REQUEST, "Malformed or unreadable request body", request, null);
-    }
-
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex,
                                                              HttpServletRequest request) {
@@ -76,8 +106,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex,
                                                            HttpServletRequest request) {
-        return build(HttpStatus.FORBIDDEN, "Access denied: you do not have permission to perform this action",
-                request, null);
+        return build(HttpStatus.FORBIDDEN, ACCESS_DENIED_MESSAGE, request, null);
     }
 
     @ExceptionHandler(NotFoundException.class)
@@ -106,8 +135,17 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", request, null);
     }
 
-    private String formatFieldError(FieldError error) {
-        return error.getField() + ": " + error.getDefaultMessage();
+    // --- helpers ---
+
+    private String reason(HttpStatusCode status) {
+        HttpStatus resolved = HttpStatus.resolve(status.value());
+        return resolved != null ? resolved.getReasonPhrase() : "Error";
+    }
+
+    private String path(WebRequest request) {
+        return request instanceof ServletWebRequest servletWebRequest
+                ? servletWebRequest.getRequest().getRequestURI()
+                : request.getDescription(false);
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message,

@@ -15,4 +15,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByOwner_Agent_Id(Long agentId);
 
     List<Ticket> findByOwner_Agent_IdAndStatus(Long agentId, TicketStatus status);
+
+    /** All tickets with a given status (e.g. an admin filtering across all customers). */
+    List<Ticket> findByStatus(TicketStatus status);
 }

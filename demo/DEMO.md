@@ -8,13 +8,16 @@ test it by hand, and demonstrate it to others. Each scenario states its **purpos
 ## Two ways to run
 
 1. **One-click (recommended):** open [`customer-support-hub.http`](customer-support-hub.http) in
-   IntelliJ IDEA and use **Run all requests in file** (or run them one-by-one). Tokens and resource
-   IDs are captured automatically between requests, and each request carries an assertion on its
-   expected status, so a green run = the whole authorization model behaves correctly. Assumes a
-   fresh DB (`docker compose down -v && docker compose up --build`).
+   IntelliJ IDEA and use **Run all requests in file** (or run them one-by-one). Tokens, usernames
+   and resource IDs are captured automatically between requests, and each request carries an
+   assertion on its expected status, so a green run = the whole authorization model behaves
+   correctly. It is **re-runnable** — each run creates users with a fresh random suffix, so it
+   passes even against a non-empty database (no `docker compose down -v` needed).
 2. **By hand / for explanation:** the `curl` scenarios below. This document is the narrative
    companion to the `.http` file — same scenarios, with expected responses spelled out, good for
-   walking someone through the behavior.
+   walking someone through the behavior. Note: these use fixed usernames (`amy`, `carol`, …), so on
+   a **second** manual run the create steps return `409` (already exist) — reset with
+   `docker compose down -v && docker compose up --build`, or vary the names.
 
 ---
 
@@ -230,6 +233,14 @@ curl -i -X POST http://localhost:8080/api/customers \
 # 409  message: "Username 'carol' is already taken"
 ```
 
+### 3.7b ❌ Duplicate customer email → **409** (email is unique)
+```bash
+curl -i -X POST http://localhost:8080/api/customers \
+  -H "Authorization: Bearer $AMY" -H 'Content-Type: application/json' \
+  -d '{"username":"carol-twin","password":"cust123","fullName":"Carol Twin","email":"carol@example.com"}'
+# 409  message: "Email 'carol@example.com' is already registered"
+```
+
 ### 3.8 ✅ Agent `amy` reads her own customer by id → **200**
 ```bash
 curl -s http://localhost:8080/api/customers/$CAROL_ID -H "Authorization: Bearer $AMY" | jq
@@ -395,7 +406,32 @@ curl -i -X POST http://localhost:8080/api/tickets \
 
 ---
 
-## 6. Authorization matrix (quick reference)
+## 6. Error status codes (correct status per error type)
+
+The API returns the precise status for each error type rather than a blanket 500.
+
+### 6.1 ❌ Unsupported HTTP method → **405**
+```bash
+curl -i -X DELETE http://localhost:8080/api/users/me -H "Authorization: Bearer $CAROL"
+# 405  (only GET/PUT are mapped on /api/users/me)
+```
+
+### 6.2 ❌ Unsupported media type → **415**
+```bash
+curl -i -X POST http://localhost:8080/api/tickets \
+  -H "Authorization: Bearer $CAROL" -H 'Content-Type: text/plain' --data 'hello'
+# 415
+```
+
+### 6.3 ❌ Unknown path (authenticated) → **404**
+```bash
+curl -i http://localhost:8080/api/does-not-exist -H "Authorization: Bearer $ADMIN"
+# 404
+```
+
+---
+
+## 7. Authorization matrix (quick reference)
 
 What each role should get on the key endpoints — useful as a checklist while demoing:
 

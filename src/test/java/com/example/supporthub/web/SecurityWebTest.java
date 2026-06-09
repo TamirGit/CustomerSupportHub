@@ -15,6 +15,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -62,7 +64,8 @@ class SecurityWebTest {
     @WithMockUser(username = "agent1", roles = "AGENT")
     void createCustomer_asAgent_isAuthorized() throws Exception {
         when(customerService.createCustomer(eq("agent1"), any()))
-                .thenReturn(new UserResponse(1L, "bob", "Bob Jones", "bob@x.io", Role.CUSTOMER, 10L));
+                .thenReturn(new UserResponse(1L, "bob", "Bob Jones", "bob@x.io", Role.CUSTOMER, 10L,
+                        Instant.now(), Instant.now()));
 
         mockMvc.perform(post("/api/customers").with(csrf())
                         .contentType("application/json").content(VALID_BODY))

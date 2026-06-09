@@ -3,7 +3,17 @@ package com.example.supporthub.dto;
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
 
-public record UserResponse(Long id, String username, String fullName, String email, Role role, Long agentId) {
+import java.time.Instant;
+
+public record UserResponse(
+        Long id,
+        String username,
+        String fullName,
+        String email,
+        Role role,
+        Long agentId,
+        Instant createdAt,
+        Instant updatedAt) {
 
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -12,6 +22,8 @@ public record UserResponse(Long id, String username, String fullName, String ema
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getAgentId());
+                user.getAgentId(),
+                user.getCreatedAt(),
+                user.getUpdatedAt());
     }
 }

@@ -10,6 +10,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.Instant;
 
 /**
  * A system user. A single table holds all roles; {@link #agent} is set only for CUSTOMERs and
@@ -44,6 +48,14 @@ public class User {
     @ManyToOne
     @JoinColumn(name = "agent_id")
     private User agent;
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private Instant updatedAt;
 
     protected User() {
         // for JPA
@@ -100,5 +112,13 @@ public class User {
 
     public Long getAgentId() {
         return agent == null ? null : agent.getId();
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

@@ -72,7 +72,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "amy-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Amy Agent", "email": "amy@example.com", "role": "AGENT" }
+{ "username": "amy-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Amy Agent", "email": "amy-{{$random.alphabetic(6)}}@example.com", "role": "AGENT" }
 
 > {%
     client.test("create amy -> 201", function () { client.assert(response.status === 201); });
@@ -86,7 +86,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "bob-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Bob Agent", "email": "bob@example.com", "role": "AGENT" }
+{ "username": "bob-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Bob Agent", "email": "bob-{{$random.alphabetic(6)}}@example.com", "role": "AGENT" }
 
 > {%
     client.test("create bob -> 201", function () { client.assert(response.status === 201); });
@@ -121,7 +121,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{amyToken}}
 Content-Type: application/json
 
-{ "username": "mallory-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Mallory", "email": "m@example.com", "role": "AGENT" }
+{ "username": "mallory-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Mallory", "email": "mallory-{{$random.alphabetic(6)}}@example.com", "role": "AGENT" }
 
 > {% client.test("agent cannot provision -> 403", function () { client.assert(response.status === 403); }); %}
 
@@ -130,7 +130,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "{{amyUser}}", "password": "agent123", "fullName": "Amy 2", "email": "amy2@example.com", "role": "AGENT" }
+{ "username": "{{amyUser}}", "password": "agent123", "fullName": "Amy 2", "email": "amy2-{{$random.alphabetic(6)}}@example.com", "role": "AGENT" }
 
 > {% client.test("duplicate username -> 409", function () { client.assert(response.status === 409); }); %}
 
@@ -148,7 +148,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "orphan-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Orphan", "email": "o@example.com", "role": "CUSTOMER" }
+{ "username": "orphan-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Orphan", "email": "orphan-{{$random.alphabetic(6)}}@example.com", "role": "CUSTOMER" }
 
 > {% client.test("customer needs agentId -> 400", function () { client.assert(response.status === 400); }); %}
 
@@ -157,7 +157,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "weird-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Weird", "email": "w@example.com", "role": "AGENT", "agentId": {{amyId}} }
+{ "username": "weird-{{$random.alphabetic(6)}}", "password": "agent123", "fullName": "Weird", "email": "weird-{{$random.alphabetic(6)}}@example.com", "role": "AGENT", "agentId": {{amyId}} }
 
 > {% client.test("agentId invalid for agent -> 400", function () { client.assert(response.status === 400); }); %}
 
@@ -166,7 +166,7 @@ POST {{baseUrl}}/api/admin/users
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{ "username": "nope-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Nope", "email": "n@example.com", "role": "CUSTOMER", "agentId": 999999 }
+{ "username": "nope-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Nope", "email": "nope-{{$random.alphabetic(6)}}@example.com", "role": "CUSTOMER", "agentId": 999999 }
 
 > {% client.test("missing agent -> 404", function () { client.assert(response.status === 404); }); %}
 
@@ -179,12 +179,13 @@ POST {{baseUrl}}/api/customers
 Authorization: Bearer {{amyToken}}
 Content-Type: application/json
 
-{ "username": "carol-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Carol Customer", "email": "carol@example.com" }
+{ "username": "carol-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Carol Customer", "email": "carol-{{$random.alphabetic(6)}}@example.com" }
 
 > {%
     client.test("create carol -> 201", function () { client.assert(response.status === 201); });
     client.test("carol registered under amy", function () { client.assert(response.body.agentId === client.global.get("amyId")); });
     client.global.set("carolUser", response.body.username);
+    client.global.set("carolEmail", response.body.email);
     client.global.set("carolId", response.body.id);
 %}
 
@@ -193,7 +194,7 @@ POST {{baseUrl}}/api/customers
 Authorization: Bearer {{bobToken}}
 Content-Type: application/json
 
-{ "username": "dave-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Dave Customer", "email": "dave@example.com" }
+{ "username": "dave-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Dave Customer", "email": "dave-{{$random.alphabetic(6)}}@example.com" }
 
 > {%
     client.test("create dave -> 201", function () { client.assert(response.status === 201); });
@@ -237,7 +238,7 @@ POST {{baseUrl}}/api/customers
 Authorization: Bearer {{carolToken}}
 Content-Type: application/json
 
-{ "username": "eve-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Eve", "email": "eve@example.com" }
+{ "username": "eve-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Eve", "email": "eve-{{$random.alphabetic(6)}}@example.com" }
 
 > {% client.test("customer cannot create -> 403", function () { client.assert(response.status === 403); }); %}
 
@@ -247,14 +248,23 @@ Authorization: Bearer {{carolToken}}
 
 > {% client.test("customer cannot list -> 403", function () { client.assert(response.status === 403); }); %}
 
-### 3.8 ❌ Duplicate customer username (re-use carol's) -> 409
+### 3.8 ❌ Duplicate customer username (re-use carol's, fresh email) -> 409
 POST {{baseUrl}}/api/customers
 Authorization: Bearer {{amyToken}}
 Content-Type: application/json
 
-{ "username": "{{carolUser}}", "password": "cust123", "fullName": "Carol Again", "email": "c2@example.com" }
+{ "username": "{{carolUser}}", "password": "cust123", "fullName": "Carol Again", "email": "c2-{{$random.alphabetic(6)}}@example.com" }
 
-> {% client.test("duplicate customer -> 409", function () { client.assert(response.status === 409); }); %}
+> {% client.test("duplicate username -> 409", function () { client.assert(response.status === 409); }); %}
+
+### 3.8b ❌ Duplicate customer email (re-use carol's email, fresh username) -> 409
+POST {{baseUrl}}/api/customers
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "username": "carol2-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Carol Twin", "email": "{{carolEmail}}" }
+
+> {% client.test("duplicate email -> 409", function () { client.assert(response.status === 409); }); %}
 
 ### 3.9 ✅ Agent amy reads her own customer by id -> 200
 GET {{baseUrl}}/api/customers/{{carolId}}
@@ -415,7 +425,7 @@ PUT {{baseUrl}}/api/users/me
 Authorization: Bearer {{carolToken}}
 Content-Type: application/json
 
-{ "fullName": "Carol C. Customer", "email": "carol.new@example.com" }
+{ "fullName": "Carol C. Customer", "email": "carol-new-{{$random.alphabetic(6)}}@example.com" }
 
 > {% client.test("carol update -> 200", function () { client.assert(response.status === 200); }); %}
 

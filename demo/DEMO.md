@@ -233,6 +233,14 @@ curl -i -X POST http://localhost:8080/api/customers \
 # 409  message: "Username 'carol' is already taken"
 ```
 
+### 3.7b ❌ Duplicate customer email → **409** (email is unique)
+```bash
+curl -i -X POST http://localhost:8080/api/customers \
+  -H "Authorization: Bearer $AMY" -H 'Content-Type: application/json' \
+  -d '{"username":"carol-twin","password":"cust123","fullName":"Carol Twin","email":"carol@example.com"}'
+# 409  message: "Email 'carol@example.com' is already registered"
+```
+
 ### 3.8 ✅ Agent `amy` reads her own customer by id → **200**
 ```bash
 curl -s http://localhost:8080/api/customers/$CAROL_ID -H "Authorization: Bearer $AMY" | jq

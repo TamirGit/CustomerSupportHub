@@ -4,7 +4,6 @@ import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.UpdateProfileRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
-import com.example.supporthub.web.error.DuplicateResourceException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,18 +32,17 @@ public class ProfileService {
 
     public UserResponse updateMyProfile(String username, UpdateProfileRequest request) {
         User user = userRepository.requireByUsername(username);
+
         if (StringUtils.hasText(request.fullName())) {
             user.setFullName(request.fullName());
         }
-        if (StringUtils.hasText(request.email()) && !request.email().equalsIgnoreCase(user.getEmail())) {
-            if (userRepository.existsByEmail(request.email())) {
-                throw new DuplicateResourceException("Email '" + request.email() + "' is already registered");
-            }
+        if (StringUtils.hasText(request.email())) {
             user.setEmail(request.email());
         }
         if (StringUtils.hasText(request.password())) {
             user.setPasswordHash(passwordEncoder.encode(request.password()));
         }
+
         return UserResponse.from(userRepository.save(user));
     }
 }

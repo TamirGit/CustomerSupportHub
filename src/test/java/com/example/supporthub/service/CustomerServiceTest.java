@@ -2,7 +2,7 @@ package com.example.supporthub.service;
 
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
-import com.example.supporthub.dto.CreateCustomerRequest;
+import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
 import com.example.supporthub.web.error.NotFoundException;
@@ -51,7 +51,7 @@ class CustomerServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UserResponse response = customerService.createCustomer("agent1",
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io"));
+                new CreateUserRequest("bob", "secret123", "Bob Jones", "bob@x.io"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -70,7 +70,7 @@ class CustomerServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UserResponse response = customerService.createCustomerUnder(10L,
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io"));
+                new CreateUserRequest("bob", "secret123", "Bob Jones", "bob@x.io"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -86,7 +86,7 @@ class CustomerServiceTest {
         when(userRepository.findByIdAndRole(99L, Role.AGENT)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> customerService.createCustomerUnder(99L,
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io")))
+                new CreateUserRequest("bob", "secret123", "Bob Jones", "bob@x.io")))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Agent 99 not found");
 

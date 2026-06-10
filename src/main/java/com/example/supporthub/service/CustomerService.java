@@ -2,7 +2,7 @@ package com.example.supporthub.service;
 
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
-import com.example.supporthub.dto.CreateCustomerRequest;
+import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
 import com.example.supporthub.web.error.NotFoundException;
@@ -34,7 +34,7 @@ public class CustomerService {
      * Authorization is enforced at the controller ({@code @PreAuthorize("hasRole('AGENT')")}), so the
      * caller is trusted to be an AGENT here — same trust model as {@code TicketService.createTicket}.
      */
-    public UserResponse createCustomer(String agentUsername, CreateCustomerRequest request) {
+    public UserResponse createCustomer(String agentUsername, CreateUserRequest request) {
         User owningAgent = userRepository.requireByUsername(agentUsername);
         return register(owningAgent, request);
     }
@@ -44,7 +44,7 @@ public class CustomerService {
      * customers, so it supplies the agent the customer belongs to (path id). Authorization is
      * enforced at the controller ({@code @PreAuthorize("hasRole('ADMIN')")}).
      */
-    public UserResponse createCustomerUnder(Long agentId, CreateCustomerRequest request) {
+    public UserResponse createCustomerUnder(Long agentId, CreateUserRequest request) {
         User owningAgent = userRepository.findByIdAndRole(agentId, Role.AGENT)
                 .orElseThrow(() -> new NotFoundException("Agent " + agentId + " not found"));
         return register(owningAgent, request);
@@ -74,7 +74,7 @@ public class CustomerService {
         return UserResponse.from(customer);
     }
 
-    private UserResponse register(User owningAgent, CreateCustomerRequest request) {
+    private UserResponse register(User owningAgent, CreateUserRequest request) {
         User customer = new User(
                 request.username(),
                 passwordEncoder.encode(request.password()),

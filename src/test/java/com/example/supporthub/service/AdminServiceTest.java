@@ -2,7 +2,7 @@ package com.example.supporthub.service;
 
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
-import com.example.supporthub.dto.CreateAgentRequest;
+import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class AdminServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UserResponse response = adminService.createAgent(
-                new CreateAgentRequest("amy", "secret123", "Amy Agent", "amy@x.io"));
+                new CreateUserRequest("amy", "secret123", "Amy Agent", "amy@x.io"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());

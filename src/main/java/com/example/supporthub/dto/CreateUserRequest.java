@@ -5,11 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Request to register a new customer. The owning agent is always the calling AGENT (for
- * {@code POST /api/customers}) or the agent named in the path (for the ADMIN endpoint
- * {@code POST /api/admin/agents/{agentId}/customers}), so no {@code agentId} appears in the body.
+ * Body for the user-creation endpoints (agent or customer). The role and owning agent are
+ * determined by the endpoint, never the body.
  */
-public record CreateCustomerRequest(
+public record CreateUserRequest(
         @NotBlank(message = "username is required")
         @Size(min = 3, max = 50, message = "username must be 3-50 characters")
         String username,

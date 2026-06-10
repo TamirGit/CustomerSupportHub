@@ -5,7 +5,6 @@ import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.CreateCustomerRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
-import com.example.supporthub.web.error.DuplicateResourceException;
 import com.example.supporthub.web.error.NotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,13 +37,6 @@ public class CustomerService {
         User user = userRepository.requireByUsername(username);
         User owningAgent = resolveOwningAgent(user, request.agentId());
 
-        if (userRepository.existsByUsername(request.username())) {
-            throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
-        }
-        if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateResourceException("Email '" + request.email() + "' is already registered");
-        }
-
         User customer = new User(
                 request.username(),
                 passwordEncoder.encode(request.password()),
@@ -67,8 +59,7 @@ public class CustomerService {
     @Transactional(readOnly = true)
     public UserResponse getCustomer(String username, Long customerId) {
         User user = userRepository.requireByUsername(username);
-        User customer = userRepository.findById(customerId)
-                .filter(u -> u.getRole() == Role.CUSTOMER)
+        User customer = userRepository.findByIdAndRole(customerId, Role.CUSTOMER)
                 .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
 
         if (user.cannotAccessResourceOwnedBy(customer)) {

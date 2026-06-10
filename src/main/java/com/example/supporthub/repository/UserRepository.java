@@ -22,8 +22,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsername(String username);
 
-    boolean existsByEmail(String email);
-
     /**
      * Customers registered under a given agent. The {@code Agent_Id} path explicitly traverses the
      * {@code agent} association to its {@code id}; writing it as {@code AgentId} would clash with

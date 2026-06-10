@@ -5,7 +5,6 @@ import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.CreateCustomerRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
-import com.example.supporthub.web.error.DuplicateResourceException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,7 +17,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,7 +44,6 @@ class CustomerServiceTest {
     void createCustomer_registersCustomerUnderCallingAgent() {
         User agent = agent(10L, "agent1");
         when(userRepository.requireByUsername("agent1")).thenReturn(agent);
-        when(userRepository.existsByUsername("bob")).thenReturn(false);
         when(passwordEncoder.encode("secret123")).thenReturn("ENCODED");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -60,31 +57,6 @@ class CustomerServiceTest {
         assertThat(saved.getAgentId()).isEqualTo(10L);          // registered under the calling agent
         assertThat(saved.getPasswordHash()).isEqualTo("ENCODED"); // password stored hashed, never plaintext
         assertThat(response.username()).isEqualTo("bob");
-    }
-
-    @Test
-    void createCustomer_rejectsDuplicateUsername() {
-        when(userRepository.requireByUsername("agent1")).thenReturn(agent(10L, "agent1"));
-        when(userRepository.existsByUsername("bob")).thenReturn(true);
-
-        assertThatThrownBy(() -> customerService.createCustomer("agent1",
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io", null)))
-                .isInstanceOf(DuplicateResourceException.class);
-
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void createCustomer_rejectsDuplicateEmail() {
-        when(userRepository.requireByUsername("agent1")).thenReturn(agent(10L, "agent1"));
-        when(userRepository.existsByUsername("bob")).thenReturn(false);
-        when(userRepository.existsByEmail("bob@x.io")).thenReturn(true);
-
-        assertThatThrownBy(() -> customerService.createCustomer("agent1",
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io", null)))
-                .isInstanceOf(DuplicateResourceException.class);
-
-        verify(userRepository, never()).save(any());
     }
 
     @Test

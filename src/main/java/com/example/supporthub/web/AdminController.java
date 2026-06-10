@@ -1,6 +1,7 @@
 package com.example.supporthub.web;
 
 import com.example.supporthub.dto.CreateAgentRequest;
+import com.example.supporthub.dto.CreateCustomerRequest;
 import com.example.supporthub.dto.CreateTicketRequest;
 import com.example.supporthub.dto.TicketResponse;
 import com.example.supporthub.dto.UserResponse;
@@ -44,5 +45,12 @@ public class AdminController {
     public TicketResponse createTicketForCustomer(@PathVariable Long customerId,
                                                   @Valid @RequestBody CreateTicketRequest request) {
         return adminService.createTicketForCustomer(customerId, request);
+    }
+
+    @PostMapping("/agents/{agentId}/customers")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponse createCustomerForAgent(@PathVariable Long agentId,
+                                               @Valid @RequestBody CreateCustomerRequest request) {
+        return adminService.createCustomerForAgent(agentId, request);
     }
 }

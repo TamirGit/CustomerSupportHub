@@ -33,10 +33,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * "ADMIN can do anything" guard proof: with an ADMIN principal, every endpoint admits the request
- * (services are mocked — this asserts authorization, not business logic). The one intentional
- * exception is the customer-only {@code POST /api/tickets}: an admin opens tickets via the
- * dedicated {@code POST /api/admin/customers/{id}/tickets} instead, since a ticket is owned by a
- * customer, not the admin.
+ * (services are mocked — this asserts authorization, not business logic). The two intentional
+ * exceptions are the customer-only {@code POST /api/tickets} and the agent-only
+ * {@code POST /api/customers}: both create a resource owned by another principal, so an admin uses
+ * the dedicated {@code /api/admin/...} endpoints ({@code customers/{id}/tickets} and
+ * {@code agents/{id}/customers}) instead.
  */
 @WebMvcTest({TicketController.class, CustomerController.class, ProfileController.class, AdminController.class})
 @Import({SecurityConfig.class, RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class})
@@ -76,11 +77,11 @@ class AdminAccessWebTest {
         when(ticketService.getTicket(any(), any())).thenReturn(ticket());
         when(customerService.listCustomers(any())).thenReturn(List.of());
         when(customerService.getCustomer(any(), any())).thenReturn(user());
-        when(customerService.createCustomer(any(), any())).thenReturn(user());
         when(profileService.getMyProfile(any())).thenReturn(user());
         when(profileService.updateMyProfile(any(), any())).thenReturn(user());
         when(adminService.createAgent(any())).thenReturn(user());
         when(adminService.createTicketForCustomer(any(), any())).thenReturn(ticket());
+        when(adminService.createCustomerForAgent(any(), any())).thenReturn(user());
     }
 
     @Test
@@ -104,8 +105,16 @@ class AdminAccessWebTest {
     }
 
     @Test
-    void adminCreatesCustomer() throws Exception {
+    void adminCannotUseAgentOnlyCustomerCreateEndpoint() throws Exception {
+        // By design: POST /api/customers registers under the CALLING agent; admin owns no customers,
+        // so it creates via /api/admin/agents/{agentId}/customers instead.
         mockMvc.perform(post("/api/customers").contentType("application/json").content(CUSTOMER_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCreatesCustomerForAgent() throws Exception {
+        mockMvc.perform(post("/api/admin/agents/2/customers").contentType("application/json").content(CUSTOMER_BODY))
                 .andExpect(status().isCreated());
     }
 

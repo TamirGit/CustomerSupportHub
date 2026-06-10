@@ -131,11 +131,12 @@ All request bodies are validated; errors return a JSON `ErrorResponse`
 | `POST` | `/api/auth/login` | public | Exchange credentials for a JWT |
 | `POST` | `/api/admin/agents` | ADMIN | Create an AGENT (the only way to add agents) |
 | `POST` | `/api/admin/customers/{customerId}/tickets` | ADMIN | Open a ticket on behalf of a customer (a ticket is owned by a CUSTOMER, so admin names the customer) |
+| `POST` | `/api/admin/agents/{agentId}/customers` | ADMIN | Create a customer under the named agent (admin owns no customers, so it names the agent) |
 | `GET`  | `/api/users/me` | any | Get own profile |
 | `PUT`  | `/api/users/me` | any | Update own profile (fullName / email / password) |
-| `POST` | `/api/customers` | AGENT, ADMIN | Create a customer (under the calling agent; ADMIN supplies `agentId`) |
+| `POST` | `/api/customers` | AGENT | Create a customer under the calling agent |
 | `GET`  | `/api/customers` | AGENT, ADMIN | List customers (AGENT → own; ADMIN → all) |
-| `GET`  | `/api/customers/{id}` | AGENT(own) / CUSTOMER(self) / ADMIN | Get a customer |
+| `GET`  | `/api/customers/{id}` | AGENT(own) / ADMIN | Get a customer |
 | `POST` | `/api/tickets` | CUSTOMER | Open a ticket |
 | `GET`  | `/api/tickets` | any | List tickets (CUSTOMER → own; AGENT → their customers', optional `?status=`; ADMIN → all) |
 | `GET`  | `/api/tickets/{id}` | owner / owning-agent / ADMIN | Get a ticket |

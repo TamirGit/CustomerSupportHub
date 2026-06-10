@@ -95,4 +95,12 @@ class SecurityWebTest {
         mockMvc.perform(get("/api/customers"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "cust", roles = "CUSTOMER")
+    void getCustomer_asCustomer_returns403() throws Exception {
+        // A CUSTOMER manages only its own profile via /api/users/me; fetching by id is AGENT/ADMIN only.
+        mockMvc.perform(get("/api/customers/1"))
+                .andExpect(status().isForbidden());
+    }
 }

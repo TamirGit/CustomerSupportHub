@@ -3,6 +3,7 @@ package com.example.supporthub.service;
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.CreateAgentRequest;
+import com.example.supporthub.dto.CreateCustomerRequest;
 import com.example.supporthub.dto.CreateTicketRequest;
 import com.example.supporthub.dto.TicketResponse;
 import com.example.supporthub.dto.UserResponse;
@@ -23,11 +24,14 @@ public class AdminService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TicketService ticketService;
+    private final CustomerService customerService;
 
-    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder, TicketService ticketService) {
+    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                        TicketService ticketService, CustomerService customerService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.ticketService = ticketService;
+        this.customerService = customerService;
     }
 
     /**
@@ -48,5 +52,10 @@ public class AdminService {
     /** Open a ticket on behalf of the given customer. */
     public TicketResponse createTicketForCustomer(Long customerId, CreateTicketRequest request) {
         return ticketService.createTicketFor(customerId, request);
+    }
+
+    /** Register a customer under the named agent. */
+    public UserResponse createCustomerForAgent(Long agentId, CreateCustomerRequest request) {
+        return customerService.createCustomerUnder(agentId, request);
     }
 }

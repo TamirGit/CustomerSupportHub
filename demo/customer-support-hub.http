@@ -251,13 +251,34 @@ Authorization: Bearer {{bobToken}}
 
 > {% client.test("cross-agent read -> 403", function () { client.assert(response.status === 403); }); %}
 
-### 3.11 ✅ Customer carol reads her own record -> 200
+### 3.11 ❌ Customer carol reads a customer by id -> 403 (customers manage only their own profile via /api/users/me)
 GET {{baseUrl}}/api/customers/{{carolId}}
 Authorization: Bearer {{carolToken}}
 
-> {% client.test("carol reads self -> 200", function () { client.assert(response.status === 200); }); %}
+> {% client.test("customer cannot read customer-by-id -> 403", function () { client.assert(response.status === 403); }); %}
 
-### 3.12 ❌ Read a non-existent customer id -> 404
+### 3.12 ✅ Admin creates a customer under a named agent (amy) -> 201 (admin owns no customers, so names the agent)
+POST {{baseUrl}}/api/admin/agents/{{amyId}}/customers
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "username": "frank-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Frank Customer", "email": "frank-{{$random.alphabetic(6)}}@example.com" }
+
+> {%
+    client.test("admin creates customer for agent -> 201", function () { client.assert(response.status === 201); });
+    client.test("customer registered under amy", function () { client.assert(response.body.agentId === client.global.get("amyId")); });
+%}
+
+### 3.13 ❌ A non-admin (agent) cannot use the admin create-customer endpoint -> 403
+POST {{baseUrl}}/api/admin/agents/{{amyId}}/customers
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "username": "nope-{{$random.alphabetic(6)}}", "password": "cust123", "fullName": "Nope", "email": "nope-{{$random.alphabetic(6)}}@example.com" }
+
+> {% client.test("agent cannot use admin customer endpoint -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 3.14 ❌ Read a non-existent customer id -> 404
 GET {{baseUrl}}/api/customers/999999
 Authorization: Bearer {{adminToken}}
 

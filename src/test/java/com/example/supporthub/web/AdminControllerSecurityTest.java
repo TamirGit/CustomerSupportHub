@@ -37,6 +37,9 @@ class AdminControllerSecurityTest {
     private static final String AGENT_BODY = """
             {"username":"amy","password":"secret123","fullName":"Amy Agent","email":"amy@x.io"}
             """;
+    private static final String CUSTOMER_BODY = """
+            {"username":"carol","password":"secret123","fullName":"Carol Customer","email":"carol@x.io"}
+            """;
     private static final String TICKET_BODY = """
             {"subject":"Cannot log in","description":"500 on login"}
             """;
@@ -108,6 +111,34 @@ class AdminControllerSecurityTest {
 
         mockMvc.perform(post("/api/admin/customers/5/tickets").with(csrf())
                         .contentType("application/json").content(TICKET_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    // --- POST /api/admin/agents/{agentId}/customers ---
+
+    @Test
+    void createCustomerForAgent_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agents/2/customers").contentType("application/json").content(CUSTOMER_BODY))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "amy", roles = "AGENT")
+    void createCustomerForAgent_asAgent_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agents/2/customers").with(csrf())
+                        .contentType("application/json").content(CUSTOMER_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void createCustomerForAgent_asAdmin_isAuthorized() throws Exception {
+        when(adminService.createCustomerForAgent(eq(2L), any()))
+                .thenReturn(new UserResponse(3L, "carol", "Carol Customer", "carol@x.io", Role.CUSTOMER, 2L,
+                        Instant.now(), Instant.now()));
+
+        mockMvc.perform(post("/api/admin/agents/2/customers").with(csrf())
+                        .contentType("application/json").content(CUSTOMER_BODY))
                 .andExpect(status().isCreated());
     }
 }

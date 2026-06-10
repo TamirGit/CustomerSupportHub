@@ -1,10 +1,15 @@
 package com.example.supporthub.service;
 
+import com.example.supporthub.domain.Role;
+import com.example.supporthub.domain.User;
+import com.example.supporthub.dto.CreateAgentRequest;
 import com.example.supporthub.dto.CreateTicketRequest;
-import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.TicketResponse;
 import com.example.supporthub.dto.UserResponse;
+import com.example.supporthub.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Orchestration facade for the ADMIN-only operations exposed by {@code AdminController}. It reuses
@@ -12,19 +17,32 @@ import org.springframework.stereotype.Service;
  * actions behind one cohesive entry point.
  */
 @Service
+@Transactional
 public class AdminService {
 
-    private final UserProvisioningService userProvisioningService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final TicketService ticketService;
 
-    public AdminService(UserProvisioningService userProvisioningService, TicketService ticketService) {
-        this.userProvisioningService = userProvisioningService;
+    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder, TicketService ticketService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
         this.ticketService = ticketService;
     }
 
-    /** Provision a user of any role (the only path to create AGENTs). */
-    public UserResponse createUser(CreateUserRequest request) {
-        return userProvisioningService.createUser(request);
+    /**
+     * Create an AGENT — the only path to add agents. A duplicate username/email trips the DB unique
+     * constraints, surfacing as a 409 via the global exception handler.
+     */
+    public UserResponse createAgent(CreateAgentRequest request) {
+        User user = new User(
+                request.username(),
+                passwordEncoder.encode(request.password()),
+                request.fullName(),
+                request.email(),
+                Role.AGENT,
+                null);
+        return UserResponse.from(userRepository.save(user));
     }
 
     /** Open a ticket on behalf of the given customer. */

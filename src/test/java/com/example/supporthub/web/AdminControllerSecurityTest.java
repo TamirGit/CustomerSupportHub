@@ -28,14 +28,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Security-aware tests for the ADMIN-only API surface: unauthenticated → 401, non-admin → 403,
- * ADMIN → 201, for both provisioning a user and opening a ticket on behalf of a customer.
+ * ADMIN → 201, for both creating an agent and opening a ticket on behalf of a customer.
  */
 @WebMvcTest(AdminController.class)
 @Import({SecurityConfig.class, RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class})
 class AdminControllerSecurityTest {
 
-    private static final String USER_BODY = """
-            {"username":"amy","password":"secret123","fullName":"Amy Agent","email":"amy@x.io","role":"AGENT"}
+    private static final String AGENT_BODY = """
+            {"username":"amy","password":"secret123","fullName":"Amy Agent","email":"amy@x.io"}
             """;
     private static final String TICKET_BODY = """
             {"subject":"Cannot log in","description":"500 on login"}
@@ -50,36 +50,36 @@ class AdminControllerSecurityTest {
     @MockBean
     JwtDecoder jwtDecoder;
 
-    // --- POST /api/admin/users ---
+    // --- POST /api/admin/agents ---
 
     @Test
-    void createUser_withoutToken_returns401() throws Exception {
-        mockMvc.perform(post("/api/admin/users").contentType("application/json").content(USER_BODY))
+    void createAgent_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agents").contentType("application/json").content(AGENT_BODY))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @WithMockUser(username = "carol", roles = "CUSTOMER")
-    void createUser_asCustomer_returns403() throws Exception {
-        mockMvc.perform(post("/api/admin/users").with(csrf()).contentType("application/json").content(USER_BODY))
+    void createAgent_asCustomer_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agents").with(csrf()).contentType("application/json").content(AGENT_BODY))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(username = "amy", roles = "AGENT")
-    void createUser_asAgent_returns403() throws Exception {
-        mockMvc.perform(post("/api/admin/users").with(csrf()).contentType("application/json").content(USER_BODY))
+    void createAgent_asAgent_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agents").with(csrf()).contentType("application/json").content(AGENT_BODY))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(username = "admin", roles = "ADMIN")
-    void createUser_asAdmin_isAuthorized() throws Exception {
-        when(adminService.createUser(any()))
+    void createAgent_asAdmin_isAuthorized() throws Exception {
+        when(adminService.createAgent(any()))
                 .thenReturn(new UserResponse(2L, "amy", "Amy Agent", "amy@x.io", Role.AGENT, null,
                         Instant.now(), Instant.now()));
 
-        mockMvc.perform(post("/api/admin/users").with(csrf()).contentType("application/json").content(USER_BODY))
+        mockMvc.perform(post("/api/admin/agents").with(csrf()).contentType("application/json").content(AGENT_BODY))
                 .andExpect(status().isCreated());
     }
 

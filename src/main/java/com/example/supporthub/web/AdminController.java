@@ -1,7 +1,7 @@
 package com.example.supporthub.web;
 
+import com.example.supporthub.dto.CreateAgentRequest;
 import com.example.supporthub.dto.CreateTicketRequest;
-import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.TicketResponse;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.service.AdminService;
@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
  * The single ADMIN-only API surface. Reads and operations that an admin already performs through
  * the regular role-aware endpoints (listing/reading tickets and customers, creating customers,
  * managing the admin's own profile) stay there; this controller adds the operations that need
- * admin-specific data shapes — provisioning users (incl. AGENTs) and opening a ticket on behalf of
- * a customer.
+ * admin-specific data shapes — creating AGENTs (the only path to add agents) and opening a ticket
+ * on behalf of a customer.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -33,10 +33,10 @@ public class AdminController {
         this.adminService = adminService;
     }
 
-    @PostMapping("/users")
+    @PostMapping("/agents")
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
-        return adminService.createUser(request);
+    public UserResponse createAgent(@Valid @RequestBody CreateAgentRequest request) {
+        return adminService.createAgent(request);
     }
 
     @PostMapping("/customers/{customerId}/tickets")

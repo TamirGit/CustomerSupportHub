@@ -46,8 +46,8 @@ class AdminAccessWebTest {
     private static final String CUSTOMER_BODY = """
             {"username":"newc","password":"passw0rd","fullName":"New Customer","email":"newc@x.io"}
             """;
-    private static final String USER_BODY = """
-            {"username":"amy","password":"secret123","fullName":"Amy Agent","email":"amy@x.io","role":"AGENT"}
+    private static final String AGENT_BODY = """
+            {"username":"amy","password":"secret123","fullName":"Amy Agent","email":"amy@x.io"}
             """;
     private static final String TICKET_BODY = """
             {"subject":"Cannot log in","description":"500 on login"}
@@ -79,7 +79,7 @@ class AdminAccessWebTest {
         when(customerService.createCustomer(any(), any())).thenReturn(user());
         when(profileService.getMyProfile(any())).thenReturn(user());
         when(profileService.updateMyProfile(any(), any())).thenReturn(user());
-        when(adminService.createUser(any())).thenReturn(user());
+        when(adminService.createAgent(any())).thenReturn(user());
         when(adminService.createTicketForCustomer(any(), any())).thenReturn(ticket());
     }
 
@@ -121,8 +121,8 @@ class AdminAccessWebTest {
     }
 
     @Test
-    void adminProvisionsUser() throws Exception {
-        mockMvc.perform(post("/api/admin/users").contentType("application/json").content(USER_BODY))
+    void adminCreatesAgent() throws Exception {
+        mockMvc.perform(post("/api/admin/agents").contentType("application/json").content(AGENT_BODY))
                 .andExpect(status().isCreated());
     }
 

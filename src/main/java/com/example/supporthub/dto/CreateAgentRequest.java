@@ -1,16 +1,14 @@
 package com.example.supporthub.dto;
 
-import com.example.supporthub.domain.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Admin request to create a user of any role. {@code agentId} is required when {@code role} is
- * CUSTOMER (the owning agent) and must be omitted otherwise.
+ * Admin request to create an AGENT. This is the only path to add agents — CUSTOMERs are created via
+ * {@code POST /api/customers} and ADMINs are seeded, so no role/agentId is needed here.
  */
-public record CreateUserRequest(
+public record CreateAgentRequest(
         @NotBlank(message = "username is required")
         @Size(min = 3, max = 50, message = "username must be 3-50 characters")
         String username,
@@ -25,10 +23,5 @@ public record CreateUserRequest(
 
         @NotBlank(message = "email is required")
         @Email(message = "email must be a valid address")
-        String email,
-
-        @NotNull(message = "role is required (ADMIN, AGENT, or CUSTOMER)")
-        Role role,
-
-        Long agentId) {
+        String email) {
 }

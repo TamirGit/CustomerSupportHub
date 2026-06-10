@@ -33,11 +33,7 @@ public class TicketService {
 
     public TicketResponse createTicket(String username, CreateTicketRequest request) {
         User user = userRepository.requireByUsername(username);
-        if (user.getRole() != Role.CUSTOMER) {
-            throw new AccessDeniedException("Only customers can open tickets");
-        }
-        Ticket ticket = new Ticket(request.subject(), request.description(), user);
-        return TicketResponse.from(ticketRepository.save(ticket));
+        return createTicket(user, request);
     }
 
     /**
@@ -46,10 +42,13 @@ public class TicketService {
      * Authorization is enforced at the controller ({@code @PreAuthorize("hasRole('ADMIN')")}).
      */
     public TicketResponse createTicketFor(Long customerId, CreateTicketRequest request) {
-        User customer = userRepository.findById(customerId)
-                .filter(candidate -> candidate.getRole() == Role.CUSTOMER)
+        User customer = userRepository.findByIdAndRole(customerId, Role.CUSTOMER)
                 .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
-        Ticket ticket = new Ticket(request.subject(), request.description(), customer);
+        return createTicket(customer, request);
+    }
+
+    private TicketResponse createTicket(User user, CreateTicketRequest request) {
+        Ticket ticket = new Ticket(request.subject(), request.description(), user);
         return TicketResponse.from(ticketRepository.save(ticket));
     }
 

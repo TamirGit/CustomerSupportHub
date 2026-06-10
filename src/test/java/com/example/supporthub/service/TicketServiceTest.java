@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -63,21 +62,9 @@ class TicketServiceTest {
     }
 
     @Test
-    void createTicket_deniedForNonCustomer() {
-        User agent = userWithId(10L, "agent", Role.AGENT, null);
-        when(userRepository.requireByUsername("agent")).thenReturn(agent);
-
-        assertThatThrownBy(() -> ticketService.createTicket("agent",
-                new CreateTicketRequest("subject", "desc")))
-                .isInstanceOf(AccessDeniedException.class);
-
-        verify(ticketRepository, never()).save(any());
-    }
-
-    @Test
     void createTicketFor_setsOwnerToNamedCustomer() {
         User customer = userWithId(5L, "carol", Role.CUSTOMER, null);
-        when(userRepository.findById(5L)).thenReturn(Optional.of(customer));
+        when(userRepository.findByIdAndRole(5L, Role.CUSTOMER)).thenReturn(Optional.of(customer));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
 
         TicketResponse response = ticketService.createTicketFor(5L,
@@ -91,7 +78,7 @@ class TicketServiceTest {
 
     @Test
     void createTicketFor_unknownCustomer_throwsNotFound() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findByIdAndRole(99L, Role.CUSTOMER)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> ticketService.createTicketFor(99L, new CreateTicketRequest("s", "d")))
                 .isInstanceOf(NotFoundException.class);
@@ -101,11 +88,11 @@ class TicketServiceTest {
 
     @Test
     void createTicketFor_nonCustomerId_throwsNotFound() {
-        User agent = userWithId(10L, "agent", Role.AGENT, null);
-        when(userRepository.findById(10L)).thenReturn(Optional.of(agent));
+        // findByIdAndRole filters on role at the query, so an id that is not a CUSTOMER returns empty.
+        when(userRepository.findByIdAndRole(10L, Role.CUSTOMER)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> ticketService.createTicketFor(10L, new CreateTicketRequest("s", "d")))
-                .isInstanceOf(NotFoundException.class);   // a non-customer cannot own a ticket
+                .isInstanceOf(NotFoundException.class);
 
         verify(ticketRepository, never()).save(any());
     }

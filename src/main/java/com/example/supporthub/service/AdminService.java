@@ -2,9 +2,8 @@ package com.example.supporthub.service;
 
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
-import com.example.supporthub.dto.CreateAgentRequest;
-import com.example.supporthub.dto.CreateCustomerRequest;
 import com.example.supporthub.dto.CreateTicketRequest;
+import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.TicketResponse;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
@@ -38,7 +37,7 @@ public class AdminService {
      * Create an AGENT — the only path to add agents. A duplicate username/email trips the DB unique
      * constraints, surfacing as a 409 via the global exception handler.
      */
-    public UserResponse createAgent(CreateAgentRequest request) {
+    public UserResponse createAgent(CreateUserRequest request) {
         User user = new User(
                 request.username(),
                 passwordEncoder.encode(request.password()),
@@ -49,13 +48,11 @@ public class AdminService {
         return UserResponse.from(userRepository.save(user));
     }
 
-    /** Open a ticket on behalf of the given customer. */
     public TicketResponse createTicketForCustomer(Long customerId, CreateTicketRequest request) {
         return ticketService.createTicketFor(customerId, request);
     }
 
-    /** Register a customer under the named agent. */
-    public UserResponse createCustomerForAgent(Long agentId, CreateCustomerRequest request) {
+    public UserResponse createCustomerForAgent(Long agentId, CreateUserRequest request) {
         return customerService.createCustomerUnder(agentId, request);
     }
 }

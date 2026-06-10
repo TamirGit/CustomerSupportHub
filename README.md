@@ -22,7 +22,7 @@ domain/       JPA entities (User, Ticket) + enums (Role, TicketStatus)
 repository/   Spring Data repositories
 dto/          request/response records + ErrorResponse
 service/      AuthService, CustomerService, ProfileService, TicketService (authorization/ownership logic)
-security/     JwtService (token minting), AppUserDetailsService
+security/     JwtService (token minting), JpaUserDetailsService
 config/       SecurityConfig, JwtConfig (HS256 encoder/decoder), JwtProperties, DataSeeder
 web/          REST controllers
 web/error/    GlobalExceptionHandler, custom exceptions, JSON auth entry-point / access-denied handlers
@@ -170,7 +170,11 @@ curl -X POST http://localhost:8080/api/customers \
   -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"passw0rd","fullName":"Alice","email":"alice@example.com"}'
 
-# 4. As that CUSTOMER, open a ticket
+# 4. Log in as that customer, then open a ticket
+CUSTOMER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"passw0rd"}' | jq -r .accessToken)
+
 curl -X POST http://localhost:8080/api/tickets \
   -H "Authorization: Bearer $CUSTOMER_TOKEN" \
   -H 'Content-Type: application/json' \
@@ -184,13 +188,14 @@ curl -H "Authorization: Bearer $AGENT_TOKEN" http://localhost:8080/api/tickets
 
 ## Testing
 
-- `CustomerServiceTest`, `TicketServiceTest`, `AdminUserServiceTest` — Mockito unit tests of the
-  authorization/ownership logic (customer registered under calling agent, duplicate username → 409,
-  agents only see their own customers/tickets, non-customers cannot open tickets, CUSTOMER requires
-  an owning agent).
-- `SecurityWebTest`, `AdminUserSecurityTest` — **security-aware** `@WebMvcTest` slices asserting
-  `401` without a token, `403` for the wrong role (CUSTOMER on the AGENT-only customer endpoint;
-  CUSTOMER/AGENT on the ADMIN-only user endpoint), and authorized access for the correct role.
+- **Unit tests (Mockito)** — `CustomerServiceTest`, `TicketServiceTest`, `AdminServiceTest`,
+  `ProfileServiceTest`, `JwtServiceTest`: authorization/ownership logic (customers registered under
+  the calling agent, agents see only their own customers/tickets, a ticket is owned by a customer,
+  partial profile updates) plus a real HS256 token encode/decode round-trip.
+- **Security-aware web slices** (`@WebMvcTest` + `spring-security-test`) — `SecurityWebTest`,
+  `AdminControllerSecurityTest`, `AdminAccessWebTest`, `AdminPathSecurityTest`, `ErrorHandlingWebTest`:
+  `401` without a token, `403` for the wrong role, the `/api/admin/**` URL-level gate, the
+  "admin can reach every endpoint" matrix, and correct error statuses (`400/404/405/415`).
 
 ---
 

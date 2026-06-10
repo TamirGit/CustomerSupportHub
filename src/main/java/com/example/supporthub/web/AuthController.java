@@ -19,7 +19,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /** Exchange username/password credentials for a signed JWT bearer token. */
     @PostMapping("/login")
     public TokenResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);

@@ -1,6 +1,6 @@
 package com.example.supporthub.web;
 
-import com.example.supporthub.dto.CreateCustomerRequest;
+import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.service.CustomerService;
 import jakarta.validation.Valid;
@@ -34,7 +34,7 @@ public class CustomerController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('AGENT')")
-    public UserResponse createCustomer(@Valid @RequestBody CreateCustomerRequest request,
+    public UserResponse createCustomer(@Valid @RequestBody CreateUserRequest request,
                                        Authentication authentication) {
         return customerService.createCustomer(authentication.getName(), request);
     }

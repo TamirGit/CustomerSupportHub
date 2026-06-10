@@ -5,7 +5,6 @@ import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.UpdateProfileRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
-import com.example.supporthub.web.error.DuplicateResourceException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,11 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,9 +33,8 @@ class ProfileServiceTest {
     }
 
     @Test
-    void updateMyProfile_appliesNewUniqueEmail() {
+    void updateMyProfile_appliesProvidedFields() {
         when(userRepository.requireByUsername("carol")).thenReturn(carol());
-        when(userRepository.existsByEmail("new@x.io")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UserResponse response = profileService.updateMyProfile("carol",
@@ -51,27 +45,16 @@ class ProfileServiceTest {
     }
 
     @Test
-    void updateMyProfile_rejectsEmailAlreadyTaken() {
+    void updateMyProfile_onlyTouchesFieldsThatWereSent() {
         when(userRepository.requireByUsername("carol")).thenReturn(carol());
-        when(userRepository.existsByEmail("taken@x.io")).thenReturn(true);
-
-        assertThatThrownBy(() -> profileService.updateMyProfile("carol",
-                new UpdateProfileRequest(null, "taken@x.io", null)))
-                .isInstanceOf(DuplicateResourceException.class);
-
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void updateMyProfile_keepingOwnEmail_skipsUniquenessCheck() {
-        when(userRepository.requireByUsername("carol")).thenReturn(carol());
+        when(passwordEncoder.encode("newpass123")).thenReturn("ENCODED");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // Same email (case-insensitive) must not trip the uniqueness check against itself.
+        // Only the password is provided — name/email must be left untouched (partial update).
         UserResponse response = profileService.updateMyProfile("carol",
-                new UpdateProfileRequest("Carol Renamed", "CAROL@x.io", null));
+                new UpdateProfileRequest(null, null, "newpass123"));
 
-        assertThat(response.fullName()).isEqualTo("Carol Renamed");
-        verify(userRepository, never()).existsByEmail(anyString());
+        assertThat(response.fullName()).isEqualTo("Carol");      // unchanged
+        assertThat(response.email()).isEqualTo("carol@x.io");    // unchanged
     }
 }

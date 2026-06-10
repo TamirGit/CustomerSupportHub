@@ -12,6 +12,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 
+    Optional<User> findByIdAndRole(Long id, Role role);
+
     /** Look up a user by username or throw a 404-mapped {@link NotFoundException}. */
     default User requireByUsername(String username) {
         return findByUsername(username)

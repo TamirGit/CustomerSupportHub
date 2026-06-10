@@ -16,12 +16,15 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -70,5 +73,26 @@ class SecurityWebTest {
         mockMvc.perform(post("/api/customers").with(csrf())
                         .contentType("application/json").content(VALID_BODY))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    @WithMockUser(username = "agent1", roles = "AGENT")
+    void listCustomers_asAgent_returns200WithOwnCustomers() throws Exception {
+        // The service scopes the listing to the calling agent's own customers; here we assert the
+        // AGENT role is authorized for GET /api/customers and that the caller's name is passed through.
+        when(customerService.listCustomers(eq("agent1")))
+                .thenReturn(List.of(new UserResponse(1L, "bob", "Bob Jones", "bob@x.io", Role.CUSTOMER, 10L,
+                        Instant.now(), Instant.now())));
+
+        mockMvc.perform(get("/api/customers"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].username").value("bob"));
+    }
+
+    @Test
+    @WithMockUser(username = "cust", roles = "CUSTOMER")
+    void listCustomers_asCustomer_returns403() throws Exception {
+        mockMvc.perform(get("/api/customers"))
+                .andExpect(status().isForbidden());
     }
 }

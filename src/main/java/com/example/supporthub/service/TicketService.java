@@ -33,9 +33,21 @@ public class TicketService {
 
     public TicketResponse createTicket(String username, CreateTicketRequest request) {
         User user = userRepository.requireByUsername(username);
-        if (user.getRole() != Role.CUSTOMER) {
-            throw new AccessDeniedException("Only customers can open tickets");
-        }
+        return createTicket(user, request);
+    }
+
+    /**
+     * Opens a ticket on behalf of a named customer. Used by the ADMIN API: a ticket must be owned
+     * by a CUSTOMER, so the admin supplies the customer rather than owning the ticket itself.
+     * Authorization is enforced at the controller ({@code @PreAuthorize("hasRole('ADMIN')")}).
+     */
+    public TicketResponse createTicketFor(Long customerId, CreateTicketRequest request) {
+        User customer = userRepository.findByIdAndRole(customerId, Role.CUSTOMER)
+                .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
+        return createTicket(customer, request);
+    }
+
+    private TicketResponse createTicket(User user, CreateTicketRequest request) {
         Ticket ticket = new Ticket(request.subject(), request.description(), user);
         return TicketResponse.from(ticketRepository.save(ticket));
     }
@@ -43,6 +55,7 @@ public class TicketService {
     @Transactional(readOnly = true)
     public List<TicketResponse> listTickets(String username, TicketStatus statusFilter) {
         User user = userRepository.requireByUsername(username);
+
         List<Ticket> tickets = switch (user.getRole()) {
             case CUSTOMER -> ticketRepository.findByOwnerId(user.getId());
             case AGENT -> statusFilter == null
@@ -52,6 +65,7 @@ public class TicketService {
                     ? ticketRepository.findAll()
                     : ticketRepository.findByStatus(statusFilter);
         };
+
         return tickets.stream().map(TicketResponse::from).toList();
     }
 
@@ -60,9 +74,11 @@ public class TicketService {
         User user = userRepository.requireByUsername(username);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket " + ticketId + " not found"));
-        if (!user.canAccessResourceOwnedBy(ticket.getOwner())) {
+
+        if (user.cannotAccessResourceOwnedBy(ticket.getOwner())) {
             throw new AccessDeniedException("You are not permitted to view this ticket");
         }
+
         return TicketResponse.from(ticket);
     }
 }

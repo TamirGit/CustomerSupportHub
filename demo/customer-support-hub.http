@@ -407,6 +407,38 @@ Content-Type: application/json
 
 > {% client.test("malformed body -> 400", function () { client.assert(response.status === 400); }); %}
 
+### 4.15 ✅ ADMIN opens a ticket on behalf of carol -> 201 ("admin can do anything")
+POST {{baseUrl}}/api/admin/customers/{{carolId}}/tickets
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "subject": "Raised by admin", "description": "Opened on behalf of the customer" }
+
+> {%
+    client.test("admin opens ticket for customer -> 201", function () { client.assert(response.status === 201); });
+    client.test("ticket owned by carol, not admin", function () {
+        client.assert(response.body.ownerUsername === client.global.get("carolUser"));
+    });
+%}
+
+### 4.16 ❌ A non-admin (agent) cannot use the admin ticket endpoint -> 403
+POST {{baseUrl}}/api/admin/customers/{{carolId}}/tickets
+Authorization: Bearer {{amyToken}}
+Content-Type: application/json
+
+{ "subject": "nope", "description": "nope" }
+
+> {% client.test("agent cannot use admin endpoint -> 403", function () { client.assert(response.status === 403); }); %}
+
+### 4.17 ❌ ADMIN still cannot use the customer-only endpoint -> 403 (admin uses the /api/admin path)
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "subject": "nope", "description": "nope" }
+
+> {% client.test("admin blocked on customer-only ticket create -> 403", function () { client.assert(response.status === 403); }); %}
+
 ###############################################################################
 # 5. SELF-SERVICE PROFILE  (/api/users/me)
 ###############################################################################

@@ -130,6 +130,7 @@ All request bodies are validated; errors return a JSON `ErrorResponse`
 |--------|------|------|-------------|
 | `POST` | `/api/auth/login` | public | Exchange credentials for a JWT |
 | `POST` | `/api/admin/users` | ADMIN | Provision a user of any role (the only way to create AGENTs); CUSTOMER requires `agentId` |
+| `POST` | `/api/admin/customers/{customerId}/tickets` | ADMIN | Open a ticket on behalf of a customer (a ticket is owned by a CUSTOMER, so admin names the customer) |
 | `GET`  | `/api/users/me` | any | Get own profile |
 | `PUT`  | `/api/users/me` | any | Update own profile (fullName / email / password) |
 | `POST` | `/api/customers` | AGENT, ADMIN | Create a customer (under the calling agent; ADMIN supplies `agentId`) |

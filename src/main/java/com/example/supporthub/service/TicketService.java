@@ -55,6 +55,7 @@ public class TicketService {
     @Transactional(readOnly = true)
     public List<TicketResponse> listTickets(String username, TicketStatus statusFilter) {
         User user = userRepository.requireByUsername(username);
+
         List<Ticket> tickets = switch (user.getRole()) {
             case CUSTOMER -> ticketRepository.findByOwnerId(user.getId());
             case AGENT -> statusFilter == null
@@ -64,6 +65,7 @@ public class TicketService {
                     ? ticketRepository.findAll()
                     : ticketRepository.findByStatus(statusFilter);
         };
+
         return tickets.stream().map(TicketResponse::from).toList();
     }
 
@@ -72,9 +74,11 @@ public class TicketService {
         User user = userRepository.requireByUsername(username);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket " + ticketId + " not found"));
-        if (!user.canAccessResourceOwnedBy(ticket.getOwner())) {
+
+        if (user.cannotAccessResourceOwnedBy(ticket.getOwner())) {
             throw new AccessDeniedException("You are not permitted to view this ticket");
         }
+
         return TicketResponse.from(ticket);
     }
 }

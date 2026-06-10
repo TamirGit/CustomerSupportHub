@@ -71,7 +71,7 @@ public class CustomerService {
                 .filter(u -> u.getRole() == Role.CUSTOMER)
                 .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
 
-        if (!user.canAccessResourceOwnedBy(customer)) {
+        if (user.cannotAccessResourceOwnedBy(customer)) {
             throw new AccessDeniedException("You are not permitted to view this customer");
         }
         return UserResponse.from(customer);

@@ -40,6 +40,19 @@ public class TicketService {
         return TicketResponse.from(ticketRepository.save(ticket));
     }
 
+    /**
+     * Opens a ticket on behalf of a named customer. Used by the ADMIN API: a ticket must be owned
+     * by a CUSTOMER, so the admin supplies the customer rather than owning the ticket itself.
+     * Authorization is enforced at the controller ({@code @PreAuthorize("hasRole('ADMIN')")}).
+     */
+    public TicketResponse createTicketFor(Long customerId, CreateTicketRequest request) {
+        User customer = userRepository.findById(customerId)
+                .filter(candidate -> candidate.getRole() == Role.CUSTOMER)
+                .orElseThrow(() -> new NotFoundException("Customer " + customerId + " not found"));
+        Ticket ticket = new Ticket(request.subject(), request.description(), customer);
+        return TicketResponse.from(ticketRepository.save(ticket));
+    }
+
     @Transactional(readOnly = true)
     public List<TicketResponse> listTickets(String username, TicketStatus statusFilter) {
         User user = userRepository.requireByUsername(username);

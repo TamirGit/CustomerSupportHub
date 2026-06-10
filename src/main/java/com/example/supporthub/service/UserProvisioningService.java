@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Backs the <strong>ADMIN-only</strong> user-provisioning API ({@code POST /api/admin/users},
- * guarded by {@code AdminUserController}). Lets an administrator create users of any role — most
+ * guarded by {@code AdminController}). Lets an administrator create users of any role — most
  * importantly AGENTs, which have no other creation path. A CUSTOMER created here must name its
  * owning agent.
  */

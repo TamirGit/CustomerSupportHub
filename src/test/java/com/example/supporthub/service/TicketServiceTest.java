@@ -8,6 +8,7 @@ import com.example.supporthub.dto.CreateTicketRequest;
 import com.example.supporthub.dto.TicketResponse;
 import com.example.supporthub.repository.TicketRepository;
 import com.example.supporthub.repository.UserRepository;
+import com.example.supporthub.web.error.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,6 +19,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -68,6 +70,42 @@ class TicketServiceTest {
         assertThatThrownBy(() -> ticketService.createTicket("agent",
                 new CreateTicketRequest("subject", "desc")))
                 .isInstanceOf(AccessDeniedException.class);
+
+        verify(ticketRepository, never()).save(any());
+    }
+
+    @Test
+    void createTicketFor_setsOwnerToNamedCustomer() {
+        User customer = userWithId(5L, "carol", Role.CUSTOMER, null);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(customer));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TicketResponse response = ticketService.createTicketFor(5L,
+                new CreateTicketRequest("Cannot log in", "I get a 500 error"));
+
+        ArgumentCaptor<Ticket> captor = ArgumentCaptor.forClass(Ticket.class);
+        verify(ticketRepository).save(captor.capture());
+        assertThat(captor.getValue().getOwner().getId()).isEqualTo(5L);   // owned by the named customer
+        assertThat(response.ownerUsername()).isEqualTo("carol");
+    }
+
+    @Test
+    void createTicketFor_unknownCustomer_throwsNotFound() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> ticketService.createTicketFor(99L, new CreateTicketRequest("s", "d")))
+                .isInstanceOf(NotFoundException.class);
+
+        verify(ticketRepository, never()).save(any());
+    }
+
+    @Test
+    void createTicketFor_nonCustomerId_throwsNotFound() {
+        User agent = userWithId(10L, "agent", Role.AGENT, null);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(agent));
+
+        assertThatThrownBy(() -> ticketService.createTicketFor(10L, new CreateTicketRequest("s", "d")))
+                .isInstanceOf(NotFoundException.class);   // a non-customer cannot own a ticket
 
         verify(ticketRepository, never()).save(any());
     }

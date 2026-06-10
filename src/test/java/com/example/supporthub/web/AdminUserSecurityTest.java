@@ -3,7 +3,7 @@ package com.example.supporthub.web;
 import com.example.supporthub.config.SecurityConfig;
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.dto.UserResponse;
-import com.example.supporthub.service.AdminUserService;
+import com.example.supporthub.service.UserProvisioningService;
 import com.example.supporthub.web.error.RestAccessDeniedHandler;
 import com.example.supporthub.web.error.RestAuthenticationEntryPoint;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class AdminUserSecurityTest {
     MockMvc mockMvc;
 
     @MockBean
-    AdminUserService adminUserService;
+    UserProvisioningService userProvisioningService;
 
     @MockBean
     JwtDecoder jwtDecoder;
@@ -69,7 +69,7 @@ class AdminUserSecurityTest {
     @Test
     @WithMockUser(username = "admin", roles = "ADMIN")
     void createUser_asAdmin_isAuthorized() throws Exception {
-        when(adminUserService.createUser(any()))
+        when(userProvisioningService.createUser(any()))
                 .thenReturn(new UserResponse(2L, "amy", "Amy Agent", "amy@x.io", Role.AGENT, null,
                         Instant.now(), Instant.now()));
 

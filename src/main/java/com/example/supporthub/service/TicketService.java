@@ -32,7 +32,7 @@ public class TicketService {
     }
 
     public TicketResponse createTicket(String username, CreateTicketRequest request) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         if (user.getRole() != Role.CUSTOMER) {
             throw new AccessDeniedException("Only customers can open tickets");
         }
@@ -42,7 +42,7 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public List<TicketResponse> listTickets(String username, TicketStatus statusFilter) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         List<Ticket> tickets = switch (user.getRole()) {
             case CUSTOMER -> ticketRepository.findByOwnerId(user.getId());
             case AGENT -> statusFilter == null
@@ -57,26 +57,12 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public TicketResponse getTicket(String username, Long ticketId) {
-        User user = loadUser(username);
+        User user = userRepository.requireByUsername(username);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket " + ticketId + " not found"));
-        if (!canAccessTicket(user, ticket)) {
+        if (!user.canAccessResourceOwnedBy(ticket.getOwner())) {
             throw new AccessDeniedException("You are not permitted to view this ticket");
         }
         return TicketResponse.from(ticket);
-    }
-
-    private boolean canAccessTicket(User user, Ticket ticket) {
-        User owner = ticket.getOwner();
-        return switch (user.getRole()) {
-            case ADMIN -> true;
-            case CUSTOMER -> user.getId().equals(owner.getId());
-            case AGENT -> user.getId().equals(owner.getAgentId());
-        };
-    }
-
-    private User loadUser(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("User '" + username + "' not found"));
     }
 }

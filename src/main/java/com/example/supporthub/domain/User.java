@@ -114,6 +114,19 @@ public class User {
         return agent == null ? null : agent.getId();
     }
 
+    /**
+     * Whether this (acting) user may access a resource owned by {@code owner}: ADMIN can access
+     * anything, an AGENT only resources owned by its own customers, and a CUSTOMER only its own.
+     * A customer "owns" itself, so customer access passes the customer as the owner.
+     */
+    public boolean canAccessResourceOwnedBy(User owner) {
+        return switch (role) {
+            case ADMIN -> true;
+            case AGENT -> id.equals(owner.getAgentId());
+            case CUSTOMER -> id.equals(owner.getId());
+        };
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

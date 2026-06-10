@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AdminUserServiceTest {
+class UserProvisioningServiceTest {
 
     @Mock
     UserRepository userRepository;
@@ -34,7 +34,7 @@ class AdminUserServiceTest {
     PasswordEncoder passwordEncoder;
 
     @InjectMocks
-    AdminUserService adminUserService;
+    UserProvisioningService userProvisioningService;
 
     @Test
     void createUser_createsAgentWithNoOwningAgent() {
@@ -42,7 +42,7 @@ class AdminUserServiceTest {
         when(passwordEncoder.encode("secret123")).thenReturn("ENCODED");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UserResponse response = adminUserService.createUser(
+        UserResponse response = userProvisioningService.createUser(
                 new CreateUserRequest("amy", "secret123", "Amy Agent", "amy@x.io", Role.AGENT, null));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -57,7 +57,7 @@ class AdminUserServiceTest {
     void createUser_customerWithoutAgentId_isRejected() {
         when(userRepository.existsByUsername("carol")).thenReturn(false);
 
-        assertThatThrownBy(() -> adminUserService.createUser(
+        assertThatThrownBy(() -> userProvisioningService.createUser(
                 new CreateUserRequest("carol", "secret123", "Carol", "carol@x.io", Role.CUSTOMER, null)))
                 .isInstanceOf(IllegalArgumentException.class);
 
@@ -73,7 +73,7 @@ class AdminUserServiceTest {
         when(passwordEncoder.encode(any())).thenReturn("ENCODED");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        adminUserService.createUser(
+        userProvisioningService.createUser(
                 new CreateUserRequest("carol", "secret123", "Carol", "carol@x.io", Role.CUSTOMER, 10L));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -86,7 +86,7 @@ class AdminUserServiceTest {
     void createUser_duplicateUsername_isRejected() {
         when(userRepository.existsByUsername("amy")).thenReturn(true);
 
-        assertThatThrownBy(() -> adminUserService.createUser(
+        assertThatThrownBy(() -> userProvisioningService.createUser(
                 new CreateUserRequest("amy", "secret123", "Amy", "amy@x.io", Role.AGENT, null)))
                 .isInstanceOf(DuplicateResourceException.class);
 
@@ -98,7 +98,7 @@ class AdminUserServiceTest {
         when(userRepository.existsByUsername("amy")).thenReturn(false);
         when(userRepository.existsByEmail("amy@x.io")).thenReturn(true);
 
-        assertThatThrownBy(() -> adminUserService.createUser(
+        assertThatThrownBy(() -> userProvisioningService.createUser(
                 new CreateUserRequest("amy", "secret123", "Amy", "amy@x.io", Role.AGENT, null)))
                 .isInstanceOf(DuplicateResourceException.class);
 
@@ -109,7 +109,7 @@ class AdminUserServiceTest {
     void createUser_agentIdForNonCustomer_isRejected() {
         when(userRepository.existsByUsername("amy")).thenReturn(false);
 
-        assertThatThrownBy(() -> adminUserService.createUser(
+        assertThatThrownBy(() -> userProvisioningService.createUser(
                 new CreateUserRequest("amy", "secret123", "Amy", "amy@x.io", Role.AGENT, 10L)))
                 .isInstanceOf(IllegalArgumentException.class);
 

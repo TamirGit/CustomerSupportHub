@@ -2,6 +2,7 @@ package com.example.supporthub.repository;
 
 import com.example.supporthub.domain.Role;
 import com.example.supporthub.domain.User;
+import com.example.supporthub.web.error.NotFoundException;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -10,6 +11,12 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
+
+    /** Look up a user by username or throw a 404-mapped {@link NotFoundException}. */
+    default User requireByUsername(String username) {
+        return findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User '" + username + "' not found"));
+    }
 
     boolean existsByUsername(String username);
 

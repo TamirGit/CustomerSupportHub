@@ -18,7 +18,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,7 +47,7 @@ class TicketServiceTest {
     @Test
     void createTicket_setsOwnerToCallingCustomer() {
         User customer = userWithId(5L, "cust", Role.CUSTOMER, null);
-        when(userRepository.findByUsername("cust")).thenReturn(Optional.of(customer));
+        when(userRepository.requireByUsername("cust")).thenReturn(customer);
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
 
         TicketResponse response = ticketService.createTicket("cust",
@@ -64,7 +63,7 @@ class TicketServiceTest {
     @Test
     void createTicket_deniedForNonCustomer() {
         User agent = userWithId(10L, "agent", Role.AGENT, null);
-        when(userRepository.findByUsername("agent")).thenReturn(Optional.of(agent));
+        when(userRepository.requireByUsername("agent")).thenReturn(agent);
 
         assertThatThrownBy(() -> ticketService.createTicket("agent",
                 new CreateTicketRequest("subject", "desc")))
@@ -78,7 +77,7 @@ class TicketServiceTest {
         User agent = userWithId(10L, "agent", Role.AGENT, null);
         User customer = userWithId(5L, "cust", Role.CUSTOMER, agent);
         Ticket ticket = new Ticket("s", "d", customer);
-        when(userRepository.findByUsername("agent")).thenReturn(Optional.of(agent));
+        when(userRepository.requireByUsername("agent")).thenReturn(agent);
         when(ticketRepository.findByOwner_Agent_Id(10L)).thenReturn(List.of(ticket));
 
         List<TicketResponse> result = ticketService.listTickets("agent", null);
@@ -93,7 +92,7 @@ class TicketServiceTest {
         User admin = userWithId(1L, "admin", Role.ADMIN, null);
         User customer = userWithId(5L, "cust", Role.CUSTOMER, null);
         Ticket ticket = new Ticket("s", "d", customer);
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(userRepository.requireByUsername("admin")).thenReturn(admin);
         when(ticketRepository.findByStatus(TicketStatus.OPEN)).thenReturn(List.of(ticket));
 
         List<TicketResponse> result = ticketService.listTickets("admin", TicketStatus.OPEN);

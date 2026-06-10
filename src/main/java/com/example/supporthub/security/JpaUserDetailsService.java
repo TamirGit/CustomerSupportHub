@@ -11,15 +11,15 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Loads users from the database for the {@code /api/auth/login} credential check performed by the
- * {@code AuthenticationManager}.
+ * Loads users from the database (via JPA) for the {@code /api/auth/login} credential check
+ * performed by the {@code AuthenticationManager}.
  */
 @Service
-public class AppUserDetailsService implements UserDetailsService {
+public class JpaUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
-    public AppUserDetailsService(UserRepository userRepository) {
+    public JpaUserDetailsService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 

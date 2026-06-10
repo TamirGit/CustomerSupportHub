@@ -2,7 +2,7 @@ package com.example.supporthub.web;
 
 import com.example.supporthub.dto.CreateUserRequest;
 import com.example.supporthub.dto.UserResponse;
-import com.example.supporthub.service.AdminUserService;
+import com.example.supporthub.service.UserProvisioningService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,15 +20,15 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
-    private final AdminUserService adminUserService;
+    private final UserProvisioningService userProvisioningService;
 
-    public AdminUserController(AdminUserService adminUserService) {
-        this.adminUserService = adminUserService;
+    public AdminUserController(UserProvisioningService userProvisioningService) {
+        this.userProvisioningService = userProvisioningService;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
-        return adminUserService.createUser(request);
+        return userProvisioningService.createUser(request);
     }
 }

@@ -172,7 +172,7 @@ sequenceDiagram
     participant DB as MySQL
 
     C->>F: GET /api/customers/7  (Bearer JWT)
-    F->>F: verify sig + exp + iss; rebuild ROLE_* from "roles"
+    F->>F: verify signature, expiry, issuer, then rebuild authorities from the roles claim
     alt missing / invalid token
         F-->>C: 401
     end

@@ -47,11 +47,6 @@ public class TicketService {
         return createTicket(customer, request);
     }
 
-    private TicketResponse createTicket(User user, CreateTicketRequest request) {
-        Ticket ticket = new Ticket(request.subject(), request.description(), user);
-        return TicketResponse.from(ticketRepository.save(ticket));
-    }
-
     @Transactional(readOnly = true)
     public List<TicketResponse> listTickets(String username, TicketStatus statusFilter) {
         User user = userRepository.requireByUsername(username);
@@ -80,5 +75,10 @@ public class TicketService {
         }
 
         return TicketResponse.from(ticket);
+    }
+
+    private TicketResponse createTicket(User user, CreateTicketRequest request) {
+        Ticket ticket = new Ticket(request.subject(), request.description(), user);
+        return TicketResponse.from(ticketRepository.save(ticket));
     }
 }

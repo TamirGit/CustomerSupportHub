@@ -5,7 +5,7 @@ import com.example.supporthub.domain.User;
 import com.example.supporthub.dto.CreateCustomerRequest;
 import com.example.supporthub.dto.UserResponse;
 import com.example.supporthub.repository.UserRepository;
-import com.example.supporthub.web.error.DuplicateResourceException;
+import com.example.supporthub.web.error.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,12 +47,11 @@ class CustomerServiceTest {
     void createCustomer_registersCustomerUnderCallingAgent() {
         User agent = agent(10L, "agent1");
         when(userRepository.requireByUsername("agent1")).thenReturn(agent);
-        when(userRepository.existsByUsername("bob")).thenReturn(false);
         when(passwordEncoder.encode("secret123")).thenReturn("ENCODED");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UserResponse response = customerService.createCustomer("agent1",
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io", null));
+                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -63,26 +63,32 @@ class CustomerServiceTest {
     }
 
     @Test
-    void createCustomer_rejectsDuplicateUsername() {
-        when(userRepository.requireByUsername("agent1")).thenReturn(agent(10L, "agent1"));
-        when(userRepository.existsByUsername("bob")).thenReturn(true);
+    void createCustomerUnder_registersCustomerUnderNamedAgent() {
+        User agent = agent(10L, "agent1");
+        when(userRepository.findByIdAndRole(10L, Role.AGENT)).thenReturn(Optional.of(agent));
+        when(passwordEncoder.encode("secret123")).thenReturn("ENCODED");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> customerService.createCustomer("agent1",
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io", null)))
-                .isInstanceOf(DuplicateResourceException.class);
+        UserResponse response = customerService.createCustomerUnder(10L,
+                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io"));
 
-        verify(userRepository, never()).save(any());
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        User saved = captor.getValue();
+        assertThat(saved.getRole()).isEqualTo(Role.CUSTOMER);
+        assertThat(saved.getAgentId()).isEqualTo(10L);          // registered under the named agent
+        assertThat(saved.getPasswordHash()).isEqualTo("ENCODED");
+        assertThat(response.username()).isEqualTo("bob");
     }
 
     @Test
-    void createCustomer_rejectsDuplicateEmail() {
-        when(userRepository.requireByUsername("agent1")).thenReturn(agent(10L, "agent1"));
-        when(userRepository.existsByUsername("bob")).thenReturn(false);
-        when(userRepository.existsByEmail("bob@x.io")).thenReturn(true);
+    void createCustomerUnder_unknownAgent_throwsNotFound() {
+        when(userRepository.findByIdAndRole(99L, Role.AGENT)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> customerService.createCustomer("agent1",
-                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io", null)))
-                .isInstanceOf(DuplicateResourceException.class);
+        assertThatThrownBy(() -> customerService.createCustomerUnder(99L,
+                new CreateCustomerRequest("bob", "secret123", "Bob Jones", "bob@x.io")))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Agent 99 not found");
 
         verify(userRepository, never()).save(any());
     }

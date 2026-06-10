@@ -102,79 +102,48 @@ curl -i http://localhost:8080/api/users/me -H "Authorization: Bearer not-a-real-
 
 ---
 
-## 2. Admin provisions agents (`POST /api/admin/users`, ADMIN-only)
+## 2. Admin creates agents (`POST /api/admin/agents`, ADMIN-only)
 
 ### 2.1 ✅ Admin creates agent `amy` → **201**
 ```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
+curl -s -X POST http://localhost:8080/api/admin/agents \
   -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"amy","password":"agent123","fullName":"Amy Agent","email":"amy@example.com","role":"AGENT"}'
+  -d '{"username":"amy","password":"agent123","fullName":"Amy Agent","email":"amy@example.com"}' | jq
 # 201  { "id":2, "username":"amy", "role":"AGENT", "agentId":null, "createdAt":"...", "updatedAt":"..." }
+AMY_ID=2   # amy's id from the response above (used later for the admin create-customer-for-agent path)
 ```
 
 ### 2.2 ✅ Admin creates agent `bob` → **201**
 ```bash
-curl -s -X POST http://localhost:8080/api/admin/users \
+curl -s -X POST http://localhost:8080/api/admin/agents \
   -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"bob","password":"agent123","fullName":"Bob Agent","email":"bob@example.com","role":"AGENT"}' | jq
+  -d '{"username":"bob","password":"agent123","fullName":"Bob Agent","email":"bob@example.com"}' | jq
 AMY=$(token amy agent123)
 BOB=$(token bob agent123)
 ```
 
-### 2.3 ❌ A non-admin (agent) tries to provision a user → **403**
+### 2.3 ❌ A non-admin (agent) tries to create an agent → **403**
 ```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
+curl -i -X POST http://localhost:8080/api/admin/agents \
   -H "Authorization: Bearer $AMY" -H 'Content-Type: application/json' \
-  -d '{"username":"mallory","password":"agent123","fullName":"Mallory","email":"m@example.com","role":"AGENT"}'
+  -d '{"username":"mallory","password":"agent123","fullName":"Mallory","email":"m@example.com"}'
 # 403  message: "Access denied: you do not have permission to perform this action"
 ```
 
 ### 2.4 ❌ Duplicate username → **409**
 ```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
+curl -i -X POST http://localhost:8080/api/admin/agents \
   -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"amy","password":"agent123","fullName":"Amy 2","email":"amy2@example.com","role":"AGENT"}'
+  -d '{"username":"amy","password":"agent123","fullName":"Amy 2","email":"amy2@example.com"}'
 # 409  message: "Username 'amy' is already taken"
 ```
 
-### 2.5 ❌ Invalid body — bad email, short password, missing role → **400**
+### 2.5 ❌ Invalid body — bad email, short password → **400**
 ```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
+curl -i -X POST http://localhost:8080/api/admin/agents \
   -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
   -d '{"username":"x","password":"123","fullName":"X","email":"not-an-email"}'
-# 400  fieldErrors include: username size, password size, email invalid, role required
-```
-
-### 2.6 ❌ Create a CUSTOMER without `agentId` → **400**
-```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
-  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"orphan","password":"cust123","fullName":"Orphan","email":"o@example.com","role":"CUSTOMER"}'
-# 400  message: "agentId is required when creating a CUSTOMER"
-```
-
-### 2.7 ❌ Provide `agentId` when creating an AGENT → **400**
-```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
-  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"weird","password":"agent123","fullName":"Weird","email":"w@example.com","role":"AGENT","agentId":2}'
-# 400  message: "agentId is only valid when creating a CUSTOMER"
-```
-
-### 2.8 ❌ Create a CUSTOMER under a non-existent agent → **404**
-```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
-  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"nope","password":"cust123","fullName":"Nope","email":"n@example.com","role":"CUSTOMER","agentId":9999}'
-# 404  message: "Agent 9999 not found"
-```
-
-### 2.9 ❌ Create a CUSTOMER whose `agentId` points to a non-agent (the admin) → **400**
-```bash
-curl -i -X POST http://localhost:8080/api/admin/users \
-  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
-  -d '{"username":"bad","password":"cust123","fullName":"Bad","email":"b@example.com","role":"CUSTOMER","agentId":1}'
-# 400  message: "User 1 is not an agent"
+# 400  fieldErrors include: username size, password size, email invalid
 ```
 
 ---
@@ -252,13 +221,28 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/customers/$CA
 # 403  (carol is not bob's customer)
 ```
 
-### 3.10 ✅ Customer `carol` reads her own record by id → **200**
+### 3.10 ❌ Customer `carol` reads a customer by id → **403** (customers manage only their own profile via `/api/users/me`)
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/customers/$CAROL_ID -H "Authorization: Bearer $CAROL"
-# 200
+# 403  (the customer-by-id endpoint is AGENT/ADMIN-only)
 ```
 
-### 3.11 ❌ Read a non-existent customer id → **404**
+### 3.11 ✅ Admin creates a customer under a named agent → **201**
+```bash
+# Admin owns no customers, so it names the agent (path id) the customer belongs to.
+curl -i -X POST http://localhost:8080/api/admin/agents/$AMY_ID/customers \
+  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+  -d '{"username":"frank","password":"cust123","fullName":"Frank Customer","email":"frank@example.com"}'
+# 201  agentId == amy's id (the named agent)
+
+# A non-admin (agent) cannot use the admin endpoint:
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8080/api/admin/agents/$AMY_ID/customers \
+  -H "Authorization: Bearer $AMY" -H 'Content-Type: application/json' \
+  -d '{"username":"nope","password":"cust123","fullName":"Nope","email":"nope@example.com"}'
+# 403
+```
+
+### 3.12 ❌ Read a non-existent customer id → **404**
 ```bash
 curl -i http://localhost:8080/api/customers/999999 -H "Authorization: Bearer $ADMIN"
 # 404  message: "Customer 999999 not found"
@@ -453,11 +437,12 @@ What each role should get on the key endpoints — useful as a checklist while d
 | Endpoint | ADMIN | AGENT | CUSTOMER | anonymous |
 |----------|:-----:|:-----:|:--------:|:---------:|
 | `POST /api/auth/login` | 200 | 200 | 200 | 200 |
-| `POST /api/admin/users` | 201 | **403** | **403** | **401** |
+| `POST /api/admin/agents` | 201 | **403** | **403** | **401** |
 | `POST /api/admin/customers/{id}/tickets` | 201 | **403** | **403** | **401** |
-| `POST /api/customers` | 201 | 201 | **403** | **401** |
+| `POST /api/admin/agents/{id}/customers` | 201 | **403** | **403** | **401** |
+| `POST /api/customers` | **403** | 201 | **403** | **401** |
 | `GET /api/customers` | 200 (all) | 200 (own) | **403** | **401** |
-| `GET /api/customers/{id}` | 200 | 200 own / **403** other | 200 self / **403** other | **401** |
+| `GET /api/customers/{id}` | 200 | 200 own / **403** other | **403** | **401** |
 | `GET/PUT /api/users/me` | 200 | 200 | 200 | **401** |
 | `POST /api/tickets` | **403** | **403** | 201 | **401** |
 | `GET /api/tickets` | 200 (all) | 200 (own customers') | 200 (own) | **401** |

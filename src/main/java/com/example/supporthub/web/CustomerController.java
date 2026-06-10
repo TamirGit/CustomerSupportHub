@@ -33,7 +33,7 @@ public class CustomerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
+    @PreAuthorize("hasRole('AGENT')")
     public UserResponse createCustomer(@Valid @RequestBody CreateCustomerRequest request,
                                        Authentication authentication) {
         return customerService.createCustomer(authentication.getName(), request);
@@ -46,6 +46,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
     public UserResponse getCustomer(@PathVariable Long id, Authentication authentication) {
         return customerService.getCustomer(authentication.getName(), id);
     }

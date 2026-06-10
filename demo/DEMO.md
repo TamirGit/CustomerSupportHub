@@ -404,6 +404,21 @@ curl -i -X POST http://localhost:8080/api/tickets \
 # 400  message: "Malformed or unreadable request body"
 ```
 
+### 5.14 ✅ ADMIN opens a ticket on behalf of a customer → **201** ("admin can do anything")
+```bash
+# A ticket is owned by a CUSTOMER, so admin names the customer (path id) rather than owning it.
+curl -i -X POST http://localhost:8080/api/admin/customers/$CAROL_ID/tickets \
+  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+  -d '{"subject":"Raised by admin","description":"Opened on behalf of the customer"}'
+# 201  ownerUsername == carol  (the ticket is owned by the customer, not the admin)
+
+# The customer-only endpoint stays closed to admin — admin uses the /api/admin path above:
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8080/api/tickets \
+  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+  -d '{"subject":"x","description":"y"}'
+# 403
+```
+
 ---
 
 ## 6. Error status codes (correct status per error type)
@@ -439,6 +454,7 @@ What each role should get on the key endpoints — useful as a checklist while d
 |----------|:-----:|:-----:|:--------:|:---------:|
 | `POST /api/auth/login` | 200 | 200 | 200 | 200 |
 | `POST /api/admin/users` | 201 | **403** | **403** | **401** |
+| `POST /api/admin/customers/{id}/tickets` | 201 | **403** | **403** | **401** |
 | `POST /api/customers` | 201 | 201 | **403** | **401** |
 | `GET /api/customers` | 200 (all) | 200 (own) | **403** | **401** |
 | `GET /api/customers/{id}` | 200 | 200 own / **403** other | 200 self / **403** other | **401** |
@@ -447,11 +463,12 @@ What each role should get on the key endpoints — useful as a checklist while d
 | `GET /api/tickets` | 200 (all) | 200 (own customers') | 200 (own) | **401** |
 | `GET /api/tickets/{id}` | 200 | 200 own / **403** other | 200 own / **403** other | **401** |
 
-(ADMIN gets 403 on `POST /api/tickets` because tickets are owned by a CUSTOMER — admins aren't customers.)
+(ADMIN gets 403 on `POST /api/tickets` because tickets are owned by a CUSTOMER — admins aren't
+customers; admin opens tickets via `POST /api/admin/customers/{id}/tickets` instead.)
 
 ---
 
-## 7. PowerShell note (Windows)
+## 8. PowerShell note (Windows)
 
 PowerShell aliases `curl` to `Invoke-WebRequest`, which parses flags differently. Either:
 

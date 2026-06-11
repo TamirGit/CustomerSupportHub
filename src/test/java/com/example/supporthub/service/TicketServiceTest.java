@@ -88,7 +88,6 @@ class TicketServiceTest {
 
     @Test
     void createTicketFor_nonCustomerId_throwsNotFound() {
-        // findByIdAndRole filters on role at the query, so an id that is not a CUSTOMER returns empty.
         when(userRepository.findByIdAndRole(10L, Role.CUSTOMER)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> ticketService.createTicketFor(10L, new CreateTicketRequest("s", "d")))
@@ -109,7 +108,7 @@ class TicketServiceTest {
 
         assertThat(result).hasSize(1);
         verify(ticketRepository).findByOwner_Agent_Id(10L);
-        verify(ticketRepository, never()).findAll(); // agent must not see all tickets
+        verify(ticketRepository, never()).findAll();
     }
 
     @Test
@@ -124,6 +123,6 @@ class TicketServiceTest {
 
         assertThat(result).hasSize(1);
         verify(ticketRepository).findByStatus(TicketStatus.OPEN);
-        verify(ticketRepository, never()).findAll(); // must not load all tickets and filter in memory
+        verify(ticketRepository, never()).findAll();
     }
 }
